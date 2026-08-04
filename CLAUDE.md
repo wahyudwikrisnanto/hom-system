@@ -42,8 +42,15 @@ make down / make destroy   # destroy also drops db+redis volumes
 | pgsql 17 | localhost:5433        | `pgsql:5432`    |
 | redis    | localhost:6378        | `redis:6379`    |
 | mailpit  | http://localhost:8025 | `mailpit:1025`  |
+| minio    | http://localhost:9001 (console), `:9000` (S3 API) | `minio:9000` |
 
-Docker network is `hom-system`; db/user `hom`, password `secret` (throwaway, local only).
+Docker network is `hom-system`; user `hom`, password `secret` (throwaway, local only). The
+database the app actually uses is **`hom_apps_prod`** (a local restore of production data) —
+`DB_DATABASE` in `gym-backend/.env`. An older, near-empty `hom` database still exists on the
+same server, so always pass the database explicitly when querying by hand
+(`psql -U hom -d hom_apps_prod`); `-d hom` will silently show you stale, unrelated data.
+MinIO root user/password: `hom` / `hom-secret`. The `minio-init` one-shot container
+creates the `hom-local` bucket on `make up` and exits — it isn't a long-lived service.
 
 Run backend commands **inside the container**, never on the host:
 
@@ -77,6 +84,11 @@ Environment gotchas worth knowing before debugging config:
 - The frontend reaches the API through Nitro's `/api` proxy, which strips `/api`, so
   `BACKEND_API_URL` carries the CMS prefix (`http://backend:8000/cms/v1`). Mock handlers
   in `gym-frontend/server/api/` shadow some paths before the proxy sees them.
+- File uploads use the `s3` disk (`FILESYSTEM_FILE_UPLOAD`), backed locally by MinIO —
+  `AWS_*` vars in `env.local`/`.env` point at `http://minio:9000` with
+  `AWS_USE_PATH_STYLE_ENDPOINT=true`. A missing-region error on `s3` calls means those
+  vars aren't in `gym-backend/.env` (only synced from `env.local` on first boot — add them
+  by hand and `config:clear` otherwise).
 
 ## Backend orientation (`gym-backend/`)
 
