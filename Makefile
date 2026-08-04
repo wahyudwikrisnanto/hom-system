@@ -42,6 +42,9 @@ logs-backend: ## Tail backend logs
 logs-frontend: ## Tail frontend logs
 	$(DC) logs -f --tail=100 frontend
 
+logs-minio: ## Tail minio logs
+	$(DC) logs -f --tail=100 minio
+
 sh: ## Shell into the backend container
 	$(DC) exec backend bash
 
@@ -90,4 +93,4 @@ composer: ## Run composer, e.g. make composer cmd="require foo/bar"
 test: ## Run the backend test suite
 	$(DC) exec backend php artisan test
 
-.PHONY: help init build up up-workers down destroy restart ps logs logs-backend logs-frontend sh sh-frontend yarn psql redis-cli artisan migrate seed fresh composer test
+.PHONY: help init build up up-workers down destroy restart ps logs logs-backend logs-frontend logs-minio sh sh-frontend yarn psql redis-cli artisan migrate seed fresh composer test

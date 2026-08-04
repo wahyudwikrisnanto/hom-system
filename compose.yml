@@ -10,6 +10,8 @@ volumes:
     driver: local
   redis-data:
     driver: local
+  minio-data:
+    driver: local
 
 services:
   backend:
@@ -139,6 +141,44 @@ services:
       - "1025:1025" # smtp
     networks:
       - hom-system
+
+  minio:
+    image: minio/minio
+    container_name: hom-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # web console
+    environment:
+      MINIO_ROOT_USER: hom
+      MINIO_ROOT_PASSWORD: hom-secret
+    volumes:
+      - minio-data:/data
+    networks:
+      - hom-system
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # One-shot: creates the local bucket so the backend's s3 disk has somewhere to
+  # write on first boot. Exits after running; not a long-lived service.
+  minio-init:
+    image: minio/mc
+    container_name: hom-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - hom-system
+    entrypoint: >
+      sh -c "
+        mc alias set local http://minio:9000 hom hom-secret;
+        mc mb --ignore-existing local/hom-local;
+        mc anonymous set download local/hom-local;
+      "
 
   # Nuxt 3 admin (SPA). Its own Dockerfile is a production build, so local dev just
   # runs `yarn dev` on a plain node image over the bind mount.
