@@ -1,0 +1,169 @@
+name: hom-system-local
+
+networks:
+  hom-system:
+    name: hom-system
+    driver: bridge
+
+volumes:
+  pgsql-data:
+    driver: local
+  redis-data:
+    driver: local
+
+services:
+  backend:
+    build:
+      context: ./gym-backend
+      dockerfile: Dockerfile
+      args:
+        PHP_VERSION: "8.2"
+        UID: "${UID:-1000}"
+        GID: "${GID:-1000}"
+        USER: hom
+        TZ: Asia/Jakarta
+    image: hom-backend:local
+    container_name: hom-backend-app
+    restart: unless-stopped
+    working_dir: /var/www/app
+    command: >
+      sh -c "
+        [ -f .env ] || cp .env.example .env;
+        [ -f vendor/autoload.php ] || composer install --no-interaction --prefer-dist;
+        grep -q '^APP_KEY=base64' .env || php artisan key:generate --force;
+        php artisan migrate --force || true;
+        php artisan serve --host=0.0.0.0 --port=8000
+      "
+    ports:
+      - "8881:8000"
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8881
+      DB_CONNECTION: pgsql
+      DB_HOST: pgsql
+      DB_PORT: "5432"
+      DB_DATABASE: hom
+      DB_USERNAME: hom
+      DB_PASSWORD: secret
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: "null"
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+    volumes:
+      - ./gym-backend:/var/www/app
+    networks:
+      - hom-system
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Queue worker — same image/mounts, just a different command.
+  # Start it explicitly: docker compose --profile workers up -d
+  queue:
+    extends:
+      service: backend
+    container_name: hom-backend-queue
+    profiles: ["workers"]
+    ports: []
+    command: >
+      sh -c "
+        [ -f vendor/autoload.php ] || composer install --no-interaction --prefer-dist;
+        php artisan queue:work --sleep=3 --tries=3
+      "
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  scheduler:
+    extends:
+      service: backend
+    container_name: hom-backend-scheduler
+    profiles: ["workers"]
+    ports: []
+    command: >
+      sh -c "
+        [ -f vendor/autoload.php ] || composer install --no-interaction --prefer-dist;
+        php artisan schedule:work
+      "
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  pgsql:
+    image: postgres:17
+    container_name: hom-pgsql
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: hom
+      POSTGRES_USER: hom
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - pgsql-data:/var/lib/postgresql/data
+    networks:
+      - hom-system
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "hom", "-d", "hom"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    container_name: hom-redis
+    restart: unless-stopped
+    ports:
+      - "6378:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - hom-system
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: hom-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025" # web UI
+      - "1025:1025" # smtp
+    networks:
+      - hom-system
+
+  # Frontend submodule — uncomment once ./gym-frontend exists.
+  # frontend:
+  #   image: node:22-alpine
+  #   container_name: hom-frontend
+  #   restart: unless-stopped
+  #   working_dir: /app
+  #   user: "${UID:-1000}:${GID:-1000}"
+  #   command: sh -c "[ -d node_modules ] || npm install; npm run dev -- --host 0.0.0.0 --port 3000"
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     # inside the network use http://backend:8000, from the browser use localhost:8881
+  #     NEXT_PUBLIC_API_URL: http://localhost:8881
+  #   volumes:
+  #     - ./gym-frontend:/app
+  #   networks:
+  #     - hom-system
+  #   depends_on:
+  #     - backend
