@@ -230,6 +230,20 @@ make test
 `composer analyze:changed` (`utils/analyze-changed.php`) runs static analysis on changed
 files only — the fast loop while iterating.
 
+**Before every backend commit**, run both over the changed files (paths relative to
+`gym-backend/`, the container workdir) and re-run until clean:
+
+```bash
+docker compose exec backend ./vendor/bin/pint app/Http/Cms/V1/Branch
+docker compose exec backend ./vendor/bin/phpstan analyse app/Http/Cms/V1/Branch
+# whole-diff shortcuts inside `make sh`: ./vendor/bin/pint --dirty && composer analyze:changed
+```
+
+Fix PHPStan errors at the cause (missing relation generic, untyped nullable param) — no
+new `@phpstan-ignore*`, `ignoreErrors`, or baseline entries. Errors your change
+introduced block the commit; pre-existing ones on untouched lines don't — mention them
+instead. If one truly can't be fixed, ask before suppressing it.
+
 ## Frontend coding patterns
 
 `gym-frontend` is the admin dashboard: Nuxt 3 (`ssr: false`), TypeScript, Vuetify 3,
@@ -364,6 +378,8 @@ Practice:
 - One logical change per commit. Don't mix a refactor with a fix, or formatting with
   behaviour. If the subject needs "and", it's probably two commits.
 - Every commit should build and pass tests on its own.
+- Backend commits: Pint + PHPStan clean on the changed files before staging (see *Quality
+  gate before finishing*).
 - Commit submodule content in `gym-backend/` first, then bump the pointer here with a
   separate `chore(gym-backend): bump to <short-sha or summary>`.
 - Never commit secrets, `.env` files, or local-only debug code. Check `git status` before
