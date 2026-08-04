@@ -146,6 +146,33 @@ controller in the matching namespace → Request + Resource in that feature fold
 Routes are grouped by resource with `Route::prefix()->controller()->group()`, one file per
 domain, all pulled in by the prefix's `v1.php`. Always add the new file to `v1.php`.
 
+### Permissions
+
+CMS routes are gated with `PermissionEnum::middleware(PermissionEnum::X)`. A new
+permission is **three** steps, not one — `PermissionSeeder` only creates the row, so
+stopping after step 1 ships a feature whose buttons nobody can see:
+
+1. Add the case to `app/Services/Auth/Enums/PermissionEnum.php` and run
+   `make artisan cmd="db:seed --class=PermissionSeeder"`.
+2. **Always assign it to the `super-admin` role**, on every environment you touch —
+   super-admin is expected to have every permission, and the CMS reads the role's
+   permission list rather than inferring super-admin rights:
+   ```bash
+   make artisan cmd="tinker --execute=\"
+     \\Spatie\\Permission\\Models\\Role::where('name','super-admin')->where('guard_name','cms')->first()
+       ->givePermissionTo('customer.family');
+     app()[\\Spatie\\Permission\\PermissionRegistrar::class]->forgetCachedPermissions();
+   \""
+   ```
+   Other roles are the client's call; super-admin is not. Grant it in the same change
+   as the code, and say so in the handover — it is not covered by any migration.
+3. Add the matching string to `gym-frontend/types/permissions.ts`, or
+   `userHasPermission()` will not type-check against it.
+
+The admin's permissions are baked into the session at login, so anyone already signed
+in has to log out and back in before a newly granted permission takes effect. Expect
+this when a new gate "doesn't work" locally.
+
 ### Controllers
 
 Thin: resolve input, build the query or call a service, return a Resource. No business
