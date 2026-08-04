@@ -230,6 +230,115 @@ make test
 `composer analyze:changed` (`utils/analyze-changed.php`) runs static analysis on changed
 files only — the fast loop while iterating.
 
+## Frontend coding patterns
+
+`gym-frontend` is the admin dashboard: Nuxt 3 (`ssr: false`), TypeScript, Vuetify 3,
+Pinia, yarn 1. As with the backend, follow what's already there — copy the nearest
+existing feature rather than introducing a new style. Nuxt auto-imports are on: no manual
+imports for `ref`/`computed`/`useRouter`/stores/composables.
+
+### Feature layout
+
+A feature is spread across fixed locations, named after the domain:
+
+```
+pages/<domain>/index.vue        # list
+pages/<domain>/create.vue       # create form
+pages/<domain>/[id]/edit.vue    # edit form
+repository/modules/<domain>/index.ts   # API calls
+types/<Domain>.ts                     # request/response types
+components/<domain>/…                 # feature components
+composables/<domain>/…                # feature logic reused across pages
+```
+
+Routing is file-based — don't hand-roll route configs. Each page sets `useHead({ title })`.
+
+### API access
+
+Never call the backend with bare `$fetch`/`axios` from a page. The chain is fixed:
+
+1. `plugins/fetch-api.ts` creates `$apiFetch` with `baseURL: "/api"`, the bearer token
+   from the auth store, and global error toasts for 401/403/422/500. **Because errors are
+   already surfaced there, don't add duplicate error alerts** in pages — only handle cases
+   that need specific copy or recovery.
+2. `repository/factory.ts` (`FetchFactory.call`) adds headers and query mapping.
+3. `repository/modules/<domain>/index.ts` defines a repository class per domain:
+
+```ts
+class BranchRepository extends FetchFactory {
+  getAll(query: PaginatedResourceParams): Promise<Pagination<BranchList>> {
+    return super.call("branch", { method: "GET", query });
+  }
+  findById(id: number): Promise<{ data: DetailBranch }> {
+    return super.call(`branch/${id}`, { method: "GET" });
+  }
+}
+```
+
+Paths are bare (`branch`, `auth/login`) — the `/api` prefix and the backend's `cms/v1`
+base are added by the fetch client and the Nitro proxy. Register a new repository in
+`plugins/api.ts` (`IapiInstance` + the returned object), then use it as
+`const { $api } = useNuxtApp()` → `$api.branch.getAll(...)`. Repository methods are typed
+in and out; no `any`.
+
+Mock handlers live in `gym-frontend/server/api/` and `_mockApis/` and shadow real
+endpoints — they're template leftovers. Don't add new mocks for features that have a real
+backend endpoint; wire the repository to the API instead.
+
+### Types
+
+`types/<Domain>.ts` holds the domain's shapes, in the established trio:
+`BaseX` (the write payload), `XList` (the list row), `DetailX extends BaseX` (the detail
+response). Status/enum-ish fields are string unions (`type BranchStatus = "active" |
+"inactive"`). Paginated responses use `Pagination<T>` from `types/pagination`; table
+params use `PaginatedResourceParams` from `types/DataTable`. Keys mirror the API exactly —
+`snake_case` — don't re-map them to camelCase in the type.
+
+### Components, state, composables
+
+- Components live under `components/<domain>/`, plus `components/shared/` for the reusable
+  shell pieces (`UiParentCard`, `SharedDeleteAlert`, `BaseBreadcrumb`). Nuxt auto-import
+  names them from their path (`shared/DeleteAlert.vue` → `<SharedDeleteAlert>`); use the
+  auto-imported name rather than a manual relative import when adding new usages.
+- All pages/components are `<script setup lang="ts">`. Vuetify components are used
+  directly; match the casing already used in the file you're editing.
+- Stores are Pinia **setup stores** in `stores/` (`defineStore("auth", () => { … })`) with
+  `pinia-plugin-persistedstate` where persistence is needed. Session/token state belongs
+  in `stores/auth.ts` — read it via `useAuthStore()`, never from `Cookie` directly in a
+  page.
+- Shared logic goes in `composables/` and is reused, not re-implemented: `useAlert()`
+  (`showError`/`showSuccess`), `usePagination()` (`calculateItemNumbering`),
+  `usePermission()`, `useUploadFile()`, date/status helpers.
+- Icons come from `vue-tabler-icons` or `mdi-` strings, following the surrounding file.
+
+### Lists and permissions
+
+- List screens use `<v-data-table-server>` with **server-side** pagination: `headers` as a
+  `computed`, `@update:options` calling the repository, `pagination` state from the API
+  meta, and search debounced with `useDebounceFn`. Don't fetch everything and filter
+  client-side.
+- Every action is permission-gated with `userHasPermission("admin.edit")` /
+  `userHasAnyPermissions(...)` from the auth store, and cards take a `permission` prop
+  (`<UiParentCard permission="admin.view">`). Route-level guarding is handled by the
+  global middleware in `middleware/` (`auth.global.ts`, `permissions.global.ts`) — add
+  page-level `definePageMeta({ middleware })` only when a page needs something extra.
+- Permission strings follow `<domain>.<action>` (`admin.view`, `admin.add`, `admin.edit`,
+  `admin.delete`) and must match the backend's permission names.
+
+### Before finishing
+
+There is currently **no working automated gate** on the frontend — don't claim one ran:
+
+- No test suite, and no `lint`/`typecheck` script in `package.json`.
+- `eslint.config.mjs` imports `.nuxt/eslint.config.mjs`, which is never generated because
+  `@nuxt/eslint` isn't registered in `nuxt.config.ts` `modules`, so `npx eslint .` fails.
+- `npx nuxi typecheck` fails too — `vue-tsc`/`typescript` aren't in `devDependencies`.
+
+So: verify changes in the running app at http://localhost:3000 and watch
+`make logs-frontend` for Vite/Nitro errors. Keep types tight by hand since nothing checks
+them. If you fix the lint/typecheck setup, that's a change to `gym-frontend`, and this
+section should be updated with the working commands.
+
 ## Commits
 
 Format — Conventional Commits, imperative mood, no trailing period:
