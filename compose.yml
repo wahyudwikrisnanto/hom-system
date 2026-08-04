@@ -13,8 +13,11 @@ volumes:
 
 services:
   backend:
+    # Dev image lives here, not in the submodule: gym-backend/Dockerfile is the
+    # production Octane build. Local runs `php artisan serve` over the bind mount so
+    # edits apply on the next request — no rebuild, no restart.
     build:
-      context: ./gym-backend
+      context: ./docker/backend
       dockerfile: Dockerfile
       args:
         PHP_VERSION: "8.2"
@@ -26,38 +29,27 @@ services:
     container_name: hom-backend-app
     restart: unless-stopped
     working_dir: /var/www/app
+    # `artisan serve` only forwards a whitelist of env vars to the PHP dev server, so
+    # the app config comes from .env (seeded from docker/backend/env.local), not from
+    # `environment:` here.
     command: >
       sh -c "
-        [ -f .env ] || cp .env.example .env;
+        [ -f .env ] || cp /srv/env.local .env;
         [ -f vendor/autoload.php ] || composer install --no-interaction --prefer-dist;
         grep -q '^APP_KEY=base64' .env || php artisan key:generate --force;
+        php artisan config:clear;
         php artisan migrate --force || true;
         php artisan serve --host=0.0.0.0 --port=8000
       "
     ports:
       - "8881:8000"
     environment:
+      # Only used by artisan/composer invoked via `docker compose exec`.
       APP_ENV: local
-      APP_DEBUG: "true"
-      APP_URL: http://localhost:8881
-      DB_CONNECTION: pgsql
-      DB_HOST: pgsql
-      DB_PORT: "5432"
-      DB_DATABASE: hom
-      DB_USERNAME: hom
-      DB_PASSWORD: secret
-      REDIS_CLIENT: phpredis
-      REDIS_HOST: redis
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: "null"
-      CACHE_STORE: redis
-      SESSION_DRIVER: redis
-      QUEUE_CONNECTION: redis
-      MAIL_MAILER: smtp
-      MAIL_HOST: mailpit
-      MAIL_PORT: "1025"
+      COMPOSER_MEMORY_LIMIT: "-1"
     volumes:
       - ./gym-backend:/var/www/app
+      - ./docker/backend/env.local:/srv/env.local:ro
     networks:
       - hom-system
     depends_on:
@@ -148,22 +140,33 @@ services:
     networks:
       - hom-system
 
-  # Frontend submodule — uncomment once ./gym-frontend exists.
-  # frontend:
-  #   image: node:22-alpine
-  #   container_name: hom-frontend
-  #   restart: unless-stopped
-  #   working_dir: /app
-  #   user: "${UID:-1000}:${GID:-1000}"
-  #   command: sh -c "[ -d node_modules ] || npm install; npm run dev -- --host 0.0.0.0 --port 3000"
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     # inside the network use http://backend:8000, from the browser use localhost:8881
-  #     NEXT_PUBLIC_API_URL: http://localhost:8881
-  #   volumes:
-  #     - ./gym-frontend:/app
-  #   networks:
-  #     - hom-system
-  #   depends_on:
-  #     - backend
+  # Nuxt 3 admin (SPA). Its own Dockerfile is a production build, so local dev just
+  # runs `yarn dev` on a plain node image over the bind mount.
+  frontend:
+    image: node:22-slim
+    container_name: hom-frontend
+    restart: unless-stopped
+    working_dir: /app
+    user: "${UID:-1000}:${GID:-1000}"
+    command: >
+      sh -c "
+        [ -d node_modules ] || yarn install --frozen-lockfile;
+        yarn dev --host 0.0.0.0 --port 3000
+      "
+    ports:
+      - "3000:3000"
+    environment:
+      # Nitro proxies /api/** server-side and strips the /api prefix, and the admin
+      # repositories call bare paths ("branch", "auth/login"), so the CMS base belongs
+      # here: /api/branch -> http://backend:8000/cms/v1/branch.
+      BACKEND_API_URL: http://backend:8000/cms/v1
+      APP_URL: http://localhost:3000
+      NUXT_SESSION_PASSWORD: local-dev-session-password-change-me-32
+      NUXT_GOOGLEMAPS_API_KEY: ""
+      NUXT_TELEMETRY_DISABLED: "1"
+    volumes:
+      - ./gym-frontend:/app
+    networks:
+      - hom-system
+    depends_on:
+      - backend

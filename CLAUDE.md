@@ -13,7 +13,7 @@ hom-system/
 ├── compose.yml      # local-only docker env (this repo's only "code")
 ├── Makefile         # entry point for every dev command
 ├── gym-backend/     # submodule → git@github.com:HMBcorp/hom-backend.git
-└── gym-frontend/    # submodule → not added yet
+└── gym-frontend/    # submodule → git@github.com:HMBcorp/hom-frontend.git
 ```
 
 Because submodules are separate repos, **commits inside `gym-backend/` belong to the
@@ -29,15 +29,16 @@ files aren't root-owned — prefer it over raw `docker compose`).
 ```bash
 make init          # git submodule update --init --recursive
 make build         # build hom-backend:local
-make up            # backend + pgsql + redis + mailpit
+make up            # backend + frontend + pgsql + redis + mailpit
 make up-workers    # ...plus queue worker and scheduler (compose profile "workers")
-make logs-backend
+make logs-backend / make logs-frontend
 make down / make destroy   # destroy also drops db+redis volumes
 ```
 
 | Service  | Host                  | In-network      |
 |----------|-----------------------|-----------------|
 | backend  | http://localhost:8881 | `backend:8000`  |
+| frontend | http://localhost:3000 | `frontend:3000` |
 | pgsql 17 | localhost:5433        | `pgsql:5432`    |
 | redis    | localhost:6378        | `redis:6379`    |
 | mailpit  | http://localhost:8025 | `mailpit:1025`  |
@@ -56,13 +57,26 @@ make composer cmd="require foo/bar"
 make psql
 ```
 
-The backend container bind-mounts `./gym-backend`, so edits apply immediately;
-`artisan serve` needs no restart. On first boot the container copies `.env.example` →
-`.env`, installs composer deps, generates `APP_KEY`, and migrates.
+Both containers bind-mount their submodule and hot reload: the backend serves via
+`php artisan serve` (edits live on the next request, opcache revalidates every request),
+the frontend via `yarn dev` with Vite HMR. Neither needs a restart for code changes.
 
-Compose sets DB/Redis/mail env vars that **override** `gym-backend/.env` (Laravel reads
-real env vars first). If behaviour looks stale after a config change, the cause is
-usually cached config: `make artisan cmd="config:clear"`.
+Environment gotchas worth knowing before debugging config:
+
+- The backend dev image is `docker/backend/Dockerfile` in **this** repo, not
+  `gym-backend/Dockerfile` (that one is the production Octane build).
+- Backend config lives in `gym-backend/.env`, seeded on first boot from
+  `docker/backend/env.local`. Compose `environment:` does **not** configure the served
+  app — `artisan serve` only forwards a whitelist of env vars to the PHP dev server. Put
+  backend settings in `docker/backend/env.local` / `.env`, never in compose.
+- Stale behaviour after a config change is usually cached config:
+  `make artisan cmd="config:clear"`.
+- `make seed` runs the offline-safe seeders; `php artisan db:seed` fails locally because
+  `DatabaseSeeder` starts with the Ampaba partner API. `make fresh` drops the `ampaba`
+  schema first because `migrate:fresh` only clears the `public` search path.
+- The frontend reaches the API through Nitro's `/api` proxy, which strips `/api`, so
+  `BACKEND_API_URL` carries the CMS prefix (`http://backend:8000/cms/v1`). Mock handlers
+  in `gym-frontend/server/api/` shadow some paths before the proxy sees them.
 
 ## Backend orientation (`gym-backend/`)
 
