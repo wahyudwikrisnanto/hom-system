@@ -449,3 +449,24 @@ Avoid: `update code`, `fix bug`, `wip`, or a 200-char subject describing every f
   it for staging/deploys — the backend has its own `deploy/` setup for that.
 - Adding the frontend submodule: `git submodule add <url> gym-frontend`, then uncomment
   the `frontend` service in `compose.yml` and fix its dev command/port.
+
+## Test data
+
+**Never delete test data you created while verifying a change, and never restore records
+you mutated to their previous values.** Leave it all in the local database when you finish
+and say what you left behind. The local DB is a throwaway restore of production — the cost
+of stray rows is nothing, and the cost of wiping the state someone is mid-way through
+inspecting is real. This includes seeded accounts, roles, permissions, and the domain rows
+a smoke test touched. Only clean up when explicitly asked to.
+
+Standing local test account (non-super-admin, for the action-approval flow):
+
+```
+email    tester@mail.com
+password password
+role     approval-tester
+```
+
+It holds `branch|membership|content` `.view` + `.edit-with-approval`, plus
+`approval.view|approve|reject`, so a single login can both submit a change and review it.
+It deliberately does **not** hold any direct `.edit`, which is what makes writes queue.
