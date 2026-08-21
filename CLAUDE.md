@@ -123,6 +123,17 @@ CMS routes gated with `PermissionEnum::middleware(PermissionEnum::X)`. New permi
 
 Admin permissions baked into session at login, so anyone already signed in must log out and back in before newly granted permission take effect. Expect this when new gate "doesn't work" locally.
 
+**Every new CMS module with write endpoints ship the approval path in same change** — direct-only never acceptable, and "add approval later" not an option. Full wiring is:
+
+1. `<DOMAIN>_EDIT_WITH_APPROVAL = '<domain>.edit-with-approval'` case in `PermissionEnum`, seeded and granted to `super-admin` like any other.
+2. `PermissionEnum::middlewareWithApproval(<direct>, <approval>)` on `store`/`update`/`destroy` routes.
+3. `ApprovalService::capture()` guard at top of each write action, returning `pendingResponse($approval)` (202) when it capture.
+4. Handler in `app/Services/Approval/Handlers/<Domain>ApprovalHandler.php` extending `BaseApprovalHandler` — `apply()` must mirror controller write exactly, `snapshot()` list only what the FormRequest can write.
+5. Morph alias in `AppServiceProvider::mapPolymorphs()` and target entry in `config/approval.php` (create/update/delete → direct permission).
+6. Frontend: permission string in `gym-frontend/types/permissions.ts`, `useApprovalMode()` for submit copy, list actions gated with `userHasAnyPermissions('<domain>.edit', '<domain>.edit-with-approval')`.
+
+FormRequest read of `$this->route('<param>')` must go through `$route->hasParameter(...)` first — approval replay build route with no bound target, and bare `parameter()` throw `Route is not bound` there.
+
 ### Controllers
 
 Thin: resolve input, build query or call service, return Resource. No business rules, no formatting.
@@ -141,6 +152,10 @@ Thin: resolve input, build query or call service, return Resource. No business r
 - Eager-load what Resource touch: `with()` in list queries, `loadMissing()`/`load()` in `show()`. Constrain relations with closures and select only needed columns (`'instructor:id,name'`). Any `$this->relation` in Resource must be eager-loaded — new N+1 is review blocker.
 - Filter by existence check use `whereExists`/`withWhereHas`/`selectSub`, not `get()` + PHP filter. Aggregates belong in SQL (`withCount`, `selectRaw`).
 - Postgres-specific SQL (`ilike`, `jsonb_each_text`) fine — app is Postgres-only — but pass values as bindings, never string-interpolated.
+
+### Timestamps
+
+Every datetime column is `timestamptz`. Use `timestampTz('x')`, `timestampsTz()`, `softDeletesTz()` — never `timestamp()`, `timestamps()`, `dateTime()`, which create Postgres `timestamp without time zone` and drop the offset. Applies to new columns and new tables; tables already on `timestamps()` stay as they are. Comparison like `where('end_at', '<=', now())` is wrong on naive column whenever app and database session timezone differ.
 
 ### Scopes and relations
 
