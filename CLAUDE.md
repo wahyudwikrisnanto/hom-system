@@ -121,7 +121,7 @@ CMS routes gated with `PermissionEnum::middleware(PermissionEnum::X)`. New permi
    Other roles are client's call; super-admin not. Grant it in same change as code, and say so in handover — no migration cover it.
 3. Add matching string to `gym-frontend/types/permissions.ts`, else `userHasPermission()` not type-check against it.
 
-Admin permissions baked into session at login, so anyone already signed in must log out and back in before newly granted permission take effect. Expect this when new gate "doesn't work" locally.
+Admin permissions read once per page load, from `GET cms/v1/auth/me`, and cached in persisted Pinia store between loads. Newly granted permission take effect on **next reload** — no log out needed. Signed-in admin who never reload still see stale gate, so reload first when new gate "doesn't work" locally.
 
 **Every new CMS module with write endpoints ship the approval path in same change** — direct-only never acceptable, and "add approval later" not an option. Full wiring is:
 
