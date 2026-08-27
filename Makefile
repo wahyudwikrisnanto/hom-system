@@ -71,7 +71,7 @@ migrate: ## Run migrations
 LOCAL_SEEDERS := RoleSeeder PermissionSeeder SettingSeeder BranchSeeder QuestionnaireSeeder \
 	UserSeeder BannerSeeder SkillSeeder PersonalTrainerSeeder ClassCategorySeeder \
 	InstructorSeeder ClassModelSeeder ToolSeeder MuscleSeeder ExerciseSeeder \
-	ClassScheduleSeeder MembershipSeeder ProductSeeder
+	ClassScheduleSeeder MembershipSeeder ProductSeeder PaymentMethodSeeder
 
 seed: ## Seed local data (skips the Ampaba seeders, which need partner API access)
 	@for s in $(LOCAL_SEEDERS); do \
