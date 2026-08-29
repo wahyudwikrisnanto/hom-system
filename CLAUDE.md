@@ -153,6 +153,40 @@ Thin: resolve input, build query or call service, return Resource. No business r
 - Filter by existence check use `whereExists`/`withWhereHas`/`selectSub`, not `get()` + PHP filter. Aggregates belong in SQL (`withCount`, `selectRaw`).
 - Postgres-specific SQL (`ilike`, `jsonb_each_text`) fine — app is Postgres-only — but pass values as bindings, never string-interpolated.
 
+### Performance and scale
+
+**Every approach must be performance-optimized for large data, and keep scaling as data grow while system running.** Not "fast enough for now" — production DB grow without bound and no maintenance window to fix it later.
+
+- Assume every table grow without bound. Never write query against today's row count.
+- **No unbounded read.** Lists always paginated. Anything walking whole table use `chunkById`/`lazyById`, never `get()` then loop.
+- No N+1, ever — already review blocker under *Querying*.
+- Filtering, counting, aggregating happen **in SQL** (`withCount`, `selectRaw`, `FILTER (WHERE …)`, `whereExists`), never by pull rows into PHP.
+- **Every new filterable or joined column ship its index in same migration** — btree default, gin (`jsonb_path_ops`) for jsonb containment. Comment which query the index serve. Index it even when table small today.
+- Bounded work per request: cap loop by domain fact (buyers per sale, items per order). Anything unbounded move to queued job in `app/Jobs/`.
+- Snapshot-on-write (jsonb column like `branch_data`, `user_data`) is sanctioned way to keep read path join-free — prefer over resolve relation at render time on list endpoint.
+- **Migration stay safe on live system**: no table rewrite on big table, no blocking backfill inside migration (chunked command if backfill truly needed), add index concurrently when table already large.
+- Frontend mirror this: server-side pagination only, debounced search and filter, never fetch-everything-then-filter-client-side.
+
+### Don't break the app or the Ampaba sync
+
+Two consumers can't be redeployed with backend: **shipped mobile app** and **Ampaba partner**. Neither read this repo, neither retry a shape they not understand. So a change that only make sense with new frontend still break them.
+
+Every new feature or refactor **adjust these to suit the update in same change** — not "later", not separate ticket:
+
+- **App API shape is contract.** `app/Http/Apps/…` + `app/Http/Common/…` Resource keys are what installed app parse. Add key, never rename or remove. Change type of existing key (string to object, scalar to array) is same as remove.
+- **New app route mean fixture update.** `tests/Feature/Apps/RouteInventoryTest` pin whole `app/v1` + `common/v1` route table against `tests/Fixtures/Apps/routes.json` — update it in same commit, and keep the middleware list right or route silently open up.
+- **Two write paths reach entitlement tables** — `OrderService` (in-app) and `AmpabaService` (partner sync). New column, new status, new rule on `user_product_actives`/orders apply to **both**, else app-made and partner-made rows drift and reports split.
+- **New non-nullable column, new required field, new validation rule** on anything Ampaba or app write: check inbound webhook (`routes/hook/ampaba.php`, `app/Http/Hook/Ampaba/`) and app store endpoints still satisfy it. Column that only CMS wizard fill must be nullable.
+- **Outbound Ampaba payload is theirs, not ours.** `AmpabaRepository` bodies match what partner accept — don't reshape to match refactored internals; map instead.
+- **Run both contract suites before finish**, and read what they say rather than re-baseline:
+
+```bash
+make artisan cmd="test tests/Feature/Apps"     # mobile API contract
+make artisan cmd="test tests/Feature/Ampaba"   # partner webhook + outbound
+```
+
+Failing contract test mean consumer break, not that test stale. Change fixture only when consumer genuinely change too — say so in handover.
+
 ### Timestamps
 
 Every datetime column is `timestamptz`. Use `timestampTz('x')`, `timestampsTz()`, `softDeletesTz()` — never `timestamp()`, `timestamps()`, `dateTime()`, which create Postgres `timestamp without time zone` and drop the offset. Applies to new columns and new tables; tables already on `timestamps()` stay as they are. Comparison like `where('end_at', '<=', now())` is wrong on naive column whenever app and database session timezone differ.
@@ -197,6 +231,8 @@ docker compose exec backend ./vendor/bin/pint app/Http/Cms/V1/Branch
 docker compose exec backend ./vendor/bin/phpstan analyse app/Http/Cms/V1/Branch
 # whole-diff shortcuts inside `make sh`: ./vendor/bin/pint --dirty && composer analyze:changed
 ```
+
+`EXPLAIN ANALYZE` any new or changed query touching a growing table before finish, and state plan in handover — seq scan on growing table is defect, not nit.
 
 Fix PHPStan errors at cause (missing relation generic, untyped nullable param) — no new `@phpstan-ignore*`, `ignoreErrors`, or baseline entries. Errors your change introduced block commit; pre-existing ones on untouched lines don't — mention them instead. If one truly can't be fixed, ask before suppressing it.
 
