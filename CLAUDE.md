@@ -292,6 +292,32 @@ Mock handlers live in `gym-frontend/server/api/` and `_mockApis/` and shadow rea
 - Shared logic go in `composables/` and reused, not re-implemented: `useAlert()` (`showError`/`showSuccess`), `usePagination()` (`calculateItemNumbering`), `usePermission()`, `useUploadFile()`, date/status helpers.
 - Icons come from `vue-tabler-icons` or `mdi-` strings, follow surrounding file.
 
+### Visual style — shadcn-flavoured
+
+Vuetify stay the component library; the look is shadcn-like. This is styling convention,
+not a dependency change — don't install shadcn-vue, don't hand-roll a second button.
+
+- **Compose from `components/shared/ui/*`** — `SharedUiSection` (title + description +
+  `#action` slot), `SharedUiSurface` (bordered card, `muted` for secondary panels),
+  `SharedUiBadge` (tones `neutral|success|warning|danger|info`, `subtle` for labels),
+  `SharedUiField` (label above value). Reach for a raw `VCard` with custom styling only
+  when no primitive fit, and then match their look exactly.
+- **Borders, not shadows.** `1px solid rgba(var(--v-border-color), 0.4–0.55)`; no
+  elevation, no gradient, no decorative icon. Radius 12px on surfaces and dialogs, pill
+  (`999px`) on badges, 8px on inputs and buttons.
+- **Theme tokens only** — `rgb(var(--v-theme-surface))`, `rgba(var(--v-theme-on-surface), …)`.
+  No hardcoded hex, no colour that only work on light theme.
+- **Type hierarchy is weight and opacity, not size.** Label 11–12px uppercase at ~0.6
+  opacity, value 13–14px at full opacity, section heading 14–16px semibold. Body copy sit
+  at `text-medium-emphasis` rather than a lighter custom grey.
+- **Spacing on a 4px step** — 4 / 8 / 12 / 16 / 20 / 24. Same gap for the same relationship
+  across screen; don't tune per component.
+- **Density compact** on `VTextField`, `VTextarea`, `VSelect`, tables. Status is
+  `SharedUiBadge` tone, never ad-hoc coloured `VChip` — `composables/status.ts` return
+  Vuetify colour and is a different vocabulary, not interchangeable.
+- Destructive action are `color="error"`, outlined in a header, flat in a dialog, and say
+  what they do ("Cancel sale"), never just "Delete".
+
 ### Lists and permissions
 
 - List screens use `<v-data-table-server>` with **server-side** pagination: `headers` as `computed`, `@update:options` call repository, `pagination` state from API meta, search debounced with `useDebounceFn`. Don't fetch everything and filter client-side.
