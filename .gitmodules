@@ -4,3 +4,6 @@
 [submodule "gym-frontend"]
 	path = gym-frontend
 	url = git@github.com:HMBcorp/hom-frontend.git
+[submodule "gym-apps"]
+	path = gym-apps
+	url = git@github.com:HMBcorp/hom-apps.git
