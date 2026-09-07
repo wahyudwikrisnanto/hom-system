@@ -202,7 +202,9 @@ services:
       BACKEND_API_URL: http://backend:8000/cms/v1
       APP_URL: http://localhost:3000
       NUXT_SESSION_PASSWORD: local-dev-session-password-change-me-32
-      NUXT_GOOGLEMAPS_API_KEY: ""
+      # NUXT_GOOGLEMAPS_API_KEY deliberately absent: anything declared here wins over
+      # gym-frontend/.env (dotenv never overwrites an already-set var), so an empty
+      # value here silently breaks the map picker. Keep the key in gym-frontend/.env.
       NUXT_TELEMETRY_DISABLED: "1"
     volumes:
       - ./gym-frontend:/app

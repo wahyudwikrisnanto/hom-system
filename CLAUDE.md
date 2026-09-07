@@ -62,6 +62,7 @@ Env gotchas worth know before debug config:
 - `make seed` run offline-safe seeders; `php artisan db:seed` fail locally because `DatabaseSeeder` start with Ampaba partner API. `make fresh` drop `ampaba` schema first because `migrate:fresh` only clear `public` search path.
 - Frontend reach API through Nitro `/api` proxy, which strip `/api`, so `BACKEND_API_URL` carry CMS prefix (`http://backend:8000/cms/v1`). Mock handlers in `gym-frontend/server/api/` shadow some paths before proxy see them.
 - File uploads use `s3` disk (`FILESYSTEM_FILE_UPLOAD`), backed locally by MinIO — `AWS_*` vars in `env.local`/`.env` point at `http://minio:9000` with `AWS_USE_PATH_STYLE_ENDPOINT=true`. Missing-region error on `s3` calls mean those vars not in `gym-backend/.env` (only synced from `env.local` on first boot — add by hand and `config:clear` otherwise).
+- Frontend env work opposite way: anything in compose `environment:` **override** `gym-frontend/.env`, because dotenv not overwrite already-set var. Empty value there still count as set — that how `NUXT_GOOGLEMAPS_API_KEY: ""` silently kill map picker. Keep frontend secret in `gym-frontend/.env` and not declare it in compose.
 
 ## Backend orientation (`gym-backend/`)
 
