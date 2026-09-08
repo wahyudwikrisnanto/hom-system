@@ -67,7 +67,9 @@ services:
       service: backend
     container_name: hom-backend-queue
     profiles: ["workers"]
-    ports: []
+    # `extends` merges sequences, so a plain `ports: []` appends nothing and the worker
+    # inherits backend's 8881 publish, then fails to bind. `!reset` drops it instead.
+    ports: !reset []
     command: >
       sh -c "
         [ -f vendor/autoload.php ] || composer install --no-interaction --prefer-dist;
@@ -84,7 +86,9 @@ services:
       service: backend
     container_name: hom-backend-scheduler
     profiles: ["workers"]
-    ports: []
+    # `extends` merges sequences, so a plain `ports: []` appends nothing and the worker
+    # inherits backend's 8881 publish, then fails to bind. `!reset` drops it instead.
+    ports: !reset []
     command: >
       sh -c "
         [ -f vendor/autoload.php ] || composer install --no-interaction --prefer-dist;
