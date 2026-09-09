@@ -356,6 +356,11 @@ build). Read it before build a screen. Need something not there: add it to
 - **Date field.** `VDateInput` get its defaults from `plugins/vuetify.ts` (calendar inside
   field, not detached icon); popover themed in `assets/scss/components/_VDatePicker.scss`,
   bordered not elevated. Never restyle picker in a page.
+- **App bar carry the session.** `SharedUiUserMenu` show who signed in — initials avatar,
+  name + role in bar; name, email, role and **Log out** in dropdown. Replace old box at foot
+  of sidebar, which eat 120px of nav scroll height and put sign-out below fold on short
+  screen. App bar right side is `SharedUiLanguageSwitcher` then `SharedUiUserMenu`, nothing
+  else.
 - **Language is one control.** `plugins/i18n.ts` make the vue-i18n instance,
   `composables/locale.ts` (`useAppLocale()` — Vuetify own a `useLocale`, so import this one
   explicit) hold the language list and remember choice in `localStorage` key `hom.locale`,
