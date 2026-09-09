@@ -361,8 +361,9 @@ build). Read it before build a screen. Need something not there: add it to
   explicit) hold the language list and remember choice in `localStorage` key `hom.locale`,
   `SharedUiLanguageSwitcher` in app bar is only mount point. English + Bahasa Indonesia.
   Key in `utils/locales/*.json` **is** the English string, so untranslated screen still read
-  right. Add strings when translate that screen — don't sweep `$t()` across menu and pages
-  ahead of work.
+  right. Sidebar is translated (NavItem/NavCollapse/NavGroup render through `$t()`, every
+  `sidebarItem.ts` label has key). Page copy not — add screen strings when work that screen,
+  don't sweep `$t()` across app ahead of work.
 - **Status never an ad-hoc coloured chip.** `composables/status.ts` hold every status
   vocabulary — `useStatus().resolve(value, domain)` return `{ tone, label }`, render
   `SharedUiBadge`. Add a domain there, not a local map in a page.
