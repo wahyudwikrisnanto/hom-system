@@ -165,7 +165,7 @@ Thin: resolve input, build query or call service, return Resource. No business r
   and nothing else. Keyset need a **total order**: add `->orderBy('id')` after the sorts so
   ties on `name`/`created_at` not repeat or skip row across page. App API stay on offset —
   shipped app read `meta.last_page`. On cursor today: admin, role, content, branch, lead,
-  pt-cutting. Anything walking whole table use `chunkById`/`lazyById`, never `get()` then loop.
+  pt-cutting, marketing. Anything walking whole table use `chunkById`/`lazyById`, never `get()` then loop.
 - No N+1, ever — already review blocker under *Querying*.
 - Filtering, counting, aggregating happen **in SQL** (`withCount`, `selectRaw`, `FILTER (WHERE …)`, `whereExists`), never by pull rows into PHP.
 - **Every new filterable or joined column ship its index in same migration** — btree default, gin (`jsonb_path_ops`) for jsonb containment. Comment which query the index serve. Index it even when table small today.
