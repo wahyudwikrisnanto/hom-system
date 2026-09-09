@@ -298,26 +298,52 @@ Mock handlers live in `gym-frontend/server/api/` and `_mockApis/` and shadow rea
 Vuetify stay the component library; the look is shadcn-like. This is styling convention,
 not a dependency change — don't install shadcn-vue, don't hand-roll a second button.
 
-- **Compose from `components/shared/ui/*`** — `SharedUiSection` (title + description +
-  `#action` slot), `SharedUiSurface` (bordered card, `muted` for secondary panels),
-  `SharedUiBadge` (tones `neutral|success|warning|danger|info`, `subtle` for labels),
-  `SharedUiField` (label above value). Reach for a raw `VCard` with custom styling only
-  when no primitive fit, and then match their look exactly.
-- **Borders, not shadows.** `1px solid rgba(var(--v-border-color), 0.4–0.55)`; no
-  elevation, no gradient, no decorative icon. Radius 12px on surfaces and dialogs, pill
-  (`999px`) on badges, 8px on inputs and buttons.
-- **Theme tokens only** — `rgb(var(--v-theme-surface))`, `rgba(var(--v-theme-on-surface), …)`.
-  No hardcoded hex, no colour that only work on light theme.
-- **Type hierarchy is weight and opacity, not size.** Label 11–12px uppercase at ~0.6
-  opacity, value 13–14px at full opacity, section heading 14–16px semibold. Body copy sit
+**`/design-system` is the catalog** — every approved component and layout, rendered, with a
+snippet to copy. Dev-only (`nuxt.config.ts` `pages:extend` drop the route from production
+build). Read it before build a screen. Need something not there: add it to
+`components/shared/ui/` **and** to the catalog in same change. Never invent one-off in page.
+
+- **Compose from `components/shared/ui/*`** — `SharedUiButton` (intent
+  `primary|secondary|ghost|outline|destructive|link`), `SharedUiSurface` (bordered card,
+  `muted` for secondary panel), `SharedUiSection` (title + description + `#action`),
+  `SharedUiBadge` (tone `neutral|success|warning|danger|info`, `subtle` for label),
+  `SharedUiField` + `SharedUiDescriptionList`, `SharedUiStatTile`, `SharedUiSwitch`,
+  `SharedUiTabs`, `SharedUiDataTable`, `SharedUiRowActions`, `SharedUiEmptyState`, `SharedUiDialog` /
+  `SharedUiConfirmDialog`, `SharedUiSeparator`, `SharedUiSkeleton`. Raw `VCard` with custom
+  styling only when no primitive fit, and then match their look exactly.
+- **Layout is a component too** — `SharedUiListPage`, `SharedUiDetailLayout`,
+  `SharedUiFormLayout` + `SharedUiFormActions`, `SharedUiPageHeader`. Back navigation live in
+  page header (arrow above title), never a breadcrumb card and never in the action row.
+  Route-changing tab is `SharedTabNavigation`; tab that only filter a surface is
+  `SharedUiTabs`; never both at same level on one screen.
+- **Row actions are `SharedUiRowActions`** — never a hand-rolled row of `VBtn`s in an
+  `#item.actions` slot. Pass a `RowAction[]` (`key`, `label`, `icon`, `to`, `intent`,
+  `permission`); first two render as icon buttons, the rest fold into an overflow menu,
+  and an action the admin lacks permission for is hidden rather than disabled.
+- **Table pagination never asks for a total.** `SharedUiDataTable` renders next/prev and a
+  positional range; give it `has-more`, or listen to `@next`/`@prev` for a cursor API.
+  `COUNT(*)` on a growing table is the expensive half of a list request.
+- **No input wrapper** — `VTextField`/`VSelect`/`VAutocomplete` already carry the defaults
+  from `plugins/vuetify.ts` (outlined, compact, 8px radius). Bind
+  `:error-messages="form.errors.<field>"` from `useForm()`.
+- **Tokens only** — `assets/scss/_tokens.scss` declare `--ds-radius*`, `--ds-space-*` (4px
+  step), `--ds-text-*`, `--ds-border*` on `:root`; colour come from `--v-theme-*`. No
+  hardcoded hex, no colour that only work on light theme. Elevation is neutralised globally
+  in `_VShadow.scss`, so `elevation="10"` is a no-op — don't add it back.
+- **Borders, not shadows.** `var(--ds-border)`; no elevation, no gradient, no decorative
+  icon. Radius 12px on surfaces and dialogs, pill on badges, 8px on inputs and buttons.
+- **Type hierarchy is weight and opacity, not size.** Label 11–12px uppercase at ~0.5
+  opacity, value 13–14px at full opacity, section heading 15–16px semibold. Body copy sit
   at `text-medium-emphasis` rather than a lighter custom grey.
-- **Spacing on a 4px step** — 4 / 8 / 12 / 16 / 20 / 24. Same gap for the same relationship
-  across screen; don't tune per component.
-- **Density compact** on `VTextField`, `VTextarea`, `VSelect`, tables. Status is
-  `SharedUiBadge` tone, never ad-hoc coloured `VChip` — `composables/status.ts` return
-  Vuetify colour and is a different vocabulary, not interchangeable.
-- Destructive action are `color="error"`, outlined in a header, flat in a dialog, and say
-  what they do ("Cancel sale"), never just "Delete".
+- **Spacing on a 4px step** — 4 / 8 / 12 / 16 / 20 / 24, via `--ds-space-*`. Same gap for
+  the same relationship across screen; don't tune per component.
+- **Status never an ad-hoc coloured chip.** `composables/status.ts` hold every status
+  vocabulary — `useStatus().resolve(value, domain)` return `{ tone, label }`, render
+  `SharedUiBadge`. Add a domain there, not a local map in a page.
+- **Dialog is one shape** — sizes sm 420 / md 560 / lg 760, header and footer pinned with
+  body scrolling, confirming action last on the right. Destructive action are
+  `intent="destructive"` (flat red) in a dialog, `outline` in a page header, and say what
+  they do ("Cancel sale"), never just "Delete".
 
 ### Lists and permissions
 
