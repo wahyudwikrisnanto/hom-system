@@ -375,7 +375,8 @@ build). Read it before build a screen. Need something not there: add it to
   glyph inside line of text, trailing chevron get 4px *more* than gap inside block it
   follow — separate control, not last word of label. `density="compact"` is usual culprit:
   collapse `.v-list-item__prepend` and leave zero-width `.v-list-item__spacer` — override
-  both. Control height come from design system: app bar control stand 40px.
+  both. Same trap in button: `SharedUiButton` slot content wrapped in `.v-btn__content`, so
+  `gap` on button do nothing — set on `:deep(.v-btn__content)`. Control height come from design system: app bar control stand 40px.
 - **Never size scroll area with viewport offset** (`calc(100vh - 190px)`). Offset is guess
   about what else on screen, go stale when that change, symptom is two scrollbar — container
   scroll behind thing inside it. Parent become non-scrolling flex column, scrolling child
