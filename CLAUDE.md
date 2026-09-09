@@ -369,6 +369,17 @@ build). Read it before build a screen. Need something not there: add it to
   right. Sidebar is translated (NavItem/NavCollapse/NavGroup render through `$t()`, every
   `sidebarItem.ts` label has key). Page copy not — add screen strings when work that screen,
   don't sweep `$t()` across app ahead of work.
+- **Things next to each other need air.** Cramped spacing is defect most reported on this
+  project — treat as correctness, not polish. Icon never flush against label: **14px**
+  between leading icon and its text (list row, menu item, sidebar nav), 8px for small inline
+  glyph inside line of text, trailing chevron get 4px *more* than gap inside block it
+  follow — separate control, not last word of label. `density="compact"` is usual culprit:
+  collapse `.v-list-item__prepend` and leave zero-width `.v-list-item__spacer` — override
+  both. Control height come from design system: app bar control stand 40px.
+- **Never size scroll area with viewport offset** (`calc(100vh - 190px)`). Offset is guess
+  about what else on screen, go stale when that change, symptom is two scrollbar — container
+  scroll behind thing inside it. Parent become non-scrolling flex column, scrolling child
+  take `flex: 1; min-height: 0`.
 - **Status never an ad-hoc coloured chip.** `composables/status.ts` hold every status
   vocabulary — `useStatus().resolve(value, domain)` return `{ tone, label }`, render
   `SharedUiBadge`. Add a domain there, not a local map in a page.
