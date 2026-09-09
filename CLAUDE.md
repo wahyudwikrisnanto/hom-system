@@ -159,7 +159,13 @@ Thin: resolve input, build query or call service, return Resource. No business r
 **Every approach must be performance-optimized for large data, and keep scaling as data grow while system running.** Not "fast enough for now" — production DB grow without bound and no maintenance window to fix it later.
 
 - Assume every table grow without bound. Never write query against today's row count.
-- **No unbounded read.** Lists always paginated. Anything walking whole table use `chunkById`/`lazyById`, never `get()` then loop.
+- **No unbounded read.** Lists always paginated. CMS lists move to `cursorPaginate()` as
+  their screen is touched — `total`/`last_page` cost a `COUNT(*)` over the whole table, so
+  a keyset list answer carry `next_cursor` plus `has_more` from `cursor_meta($paginator)`
+  and nothing else. Keyset need a **total order**: add `->orderBy('id')` after the sorts so
+  ties on `name`/`created_at` not repeat or skip row across page. App API stay on offset —
+  shipped app read `meta.last_page`. On cursor today: admin, role, content, branch, lead,
+  pt-cutting. Anything walking whole table use `chunkById`/`lazyById`, never `get()` then loop.
 - No N+1, ever — already review blocker under *Querying*.
 - Filtering, counting, aggregating happen **in SQL** (`withCount`, `selectRaw`, `FILTER (WHERE …)`, `whereExists`), never by pull rows into PHP.
 - **Every new filterable or joined column ship its index in same migration** — btree default, gin (`jsonb_path_ops`) for jsonb containment. Comment which query the index serve. Index it even when table small today.
@@ -306,9 +312,10 @@ build). Read it before build a screen. Need something not there: add it to
 - **Compose from `components/shared/ui/*`** — `SharedUiButton` (intent
   `primary|secondary|ghost|outline|destructive|link`), `SharedUiSurface` (bordered card,
   `muted` for secondary panel), `SharedUiSection` (title + description + `#action`),
-  `SharedUiBadge` (tone `neutral|success|warning|danger|info`, `subtle` for label),
+  `SharedUiBadge` (tone `neutral|primary|success|warning|danger|info`, `subtle` for label),
   `SharedUiField` + `SharedUiDescriptionList`, `SharedUiStatTile`, `SharedUiSwitch`,
-  `SharedUiTabs`, `SharedUiDataTable`, `SharedUiRowActions`, `SharedUiEmptyState`, `SharedUiDialog` /
+  `SharedUiTabs`, `SharedUiDataTable`, `SharedUiRowActions`, `SharedUiCollapsible`,
+  `SharedUiFormStatus`, `SharedUiEmptyState`, `SharedUiDialog` /
   `SharedUiConfirmDialog`, `SharedUiSeparator`, `SharedUiSkeleton`. Raw `VCard` with custom
   styling only when no primitive fit, and then match their look exactly.
 - **Layout is a component too** — `SharedUiListPage`, `SharedUiDetailLayout`,
@@ -337,6 +344,18 @@ build). Read it before build a screen. Need something not there: add it to
   at `text-medium-emphasis` rather than a lighter custom grey.
 - **Spacing on a 4px step** — 4 / 8 / 12 / 16 / 20 / 24, via `--ds-space-*`. Same gap for
   the same relationship across screen; don't tune per component.
+- **A record's status is a card, not a field.** Form that edit a model with `status` put
+  it in `SharedUiFormStatus`, passed to `SharedUiFormLayout`'s `#status` slot — own surface
+  above the sections, current value as a badge. Never a status select inside field grid.
+- **Active is primary, inactive is red.** Plain on/off vocabulary resolve `active` to
+  `primary` tone, `inactive` to `danger`. Any control whose selection *is* a state paint
+  the choice in that tone too — `SharedUiTabs` accent its active segment by default.
+- **Density is set by the primitive.** Table row 44px / 13px text (`SharedUiDataTable` own
+  it, no per-screen tuning). Form fill page — `SharedUiFormLayout` carry no max-width.
+  Dialog with no body render none: `SharedUiDialog` drop the empty band and header rule.
+- **Date field.** `VDateInput` get its defaults from `plugins/vuetify.ts` (calendar inside
+  field, not detached icon); popover themed in `assets/scss/components/_VDatePicker.scss`,
+  bordered not elevated. Never restyle picker in a page.
 - **Status never an ad-hoc coloured chip.** `composables/status.ts` hold every status
   vocabulary — `useStatus().resolve(value, domain)` return `{ tone, label }`, render
   `SharedUiBadge`. Add a domain there, not a local map in a page.
