@@ -378,6 +378,14 @@ build). Read it before build a screen. Need something not there: add it to
   `composables/status.ts` in English, translate at render — `$t(resolve(x).label)`.
   Translated so far: sidebar, shared shell (`SharedUiDataTable` footer,
   `SharedUiFormActions`, `SharedUiFormStatus`), whole Admin area.
+- **Controls on a row are one height, one chevron.** Field, select, button all stand
+  `--ds-control-height` (42px — what Vuetify compact field measure with its border),
+  `--ds-control-height-sm` (32px) one step down; `.ds-btn` map Vuetify `size-default` and
+  `size-small` onto them. Before this, search box, Filters toggle and sort select stood three
+  different heights on every list. Thing that open show **one** chevron: `ChevronDownIcon`
+  16px, rotate 180° over 0.15s. `VSelect`/`VAutocomplete`/`VCombobox` get
+  `menuIcon: "mdi-chevron-down"` in `plugins/vuetify.ts` — Vuetify default is filled triangle,
+  read as different control beside a real chevron.
 - **Things next to each other need air.** Cramped spacing is defect most reported on this
   project — treat as correctness, not polish. Icon never flush against label: **14px**
   between leading icon and its text (list row, menu item, sidebar nav), 8px for small inline
