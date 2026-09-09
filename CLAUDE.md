@@ -366,9 +366,13 @@ build). Read it before build a screen. Need something not there: add it to
   explicit) hold the language list and remember choice in `localStorage` key `hom.locale`,
   `SharedUiLanguageSwitcher` in app bar is only mount point. English + Bahasa Indonesia.
   Key in `utils/locales/*.json` **is** the English string, so untranslated screen still read
-  right. Sidebar is translated (NavItem/NavCollapse/NavGroup render through `$t()`, every
-  `sidebarItem.ts` label has key). Page copy not — add screen strings when work that screen,
-  don't sweep `$t()` across app ahead of work.
+  right. Add screen strings when work that screen, don't sweep `$t()` across app ahead of
+  work. Translate a screen: `$t()` in template (bind it, these are props), `useI18n()`'s
+  `t()` in script. **Table headers must become `computed`** or they keep language they first
+  render in; same for toast, validation message, `useHead({ title })`. Status label live in
+  `composables/status.ts` in English, translate at render — `$t(resolve(x).label)`.
+  Translated so far: sidebar, shared shell (`SharedUiDataTable` footer,
+  `SharedUiFormActions`, `SharedUiFormStatus`), whole Admin area.
 - **Things next to each other need air.** Cramped spacing is defect most reported on this
   project — treat as correctness, not polish. Icon never flush against label: **14px**
   between leading icon and its text (list row, menu item, sidebar nav), 8px for small inline
