@@ -362,10 +362,14 @@ build). Read it before build a screen. Need something not there: add it to
   screen. App bar right side is `SharedUiLanguageSwitcher` then `SharedUiUserMenu`, nothing
   else.
 - **Menu item stay lit for own subtree.** Vuetify match nav `to` exact only, so
-  `/admin/create` and `/admin/12/edit` unlit Admin entry. Entry in `sidebarItem.ts` declare
-  `activeMatch: "/admin"`, then `NavItem` own its active state — lit for that path and
-  anything under it, matched on segment boundary so `/admin` not light `/administration`.
-  Entry without one keep Vuetify exact match. Add when migrate that area; `/admin` have it.
+  `/admin/create` and `/admin/12/edit` unlit Admin entry — worst on hard refresh, whole
+  sidebar dark. `sidebarItem.ts` now derive rule for every entry at foot of file:
+  `activeMatch` default to entry own `to`, `activeExcept` fill with every deeper menu path
+  nested under it (`/master/branch` not light on `/master/branch/cluster`, `/transaction`
+  not light on `/transaction/create`). `NavItem` match on segment boundary so `/admin` not
+  light `/administration`. Declare either by hand only for route with no menu entry of own.
+  Collapsible group open itself when route inside it — `vertical-sidebar/index.vue` hold
+  `opened` list, `NavCollapse` name each group `:value="item.title"`.
 - **Language is one control.** `plugins/i18n.ts` make the vue-i18n instance,
   `composables/locale.ts` (`useAppLocale()` — Vuetify own a `useLocale`, so import this one
   explicit) hold the language list and remember choice in `localStorage` key `hom.locale`,
