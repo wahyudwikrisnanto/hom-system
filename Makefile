@@ -45,6 +45,9 @@ logs-frontend: ## Tail frontend logs
 logs-minio: ## Tail minio logs
 	$(DC) logs -f --tail=100 minio
 
+logs-automation: ## Tail automation (Vite sandbox) logs
+	$(DC) logs -f --tail=100 automation
+
 sh: ## Shell into the backend container
 	$(DC) exec backend bash
 
@@ -53,6 +56,21 @@ sh-frontend: ## Shell into the frontend container
 
 yarn: ## Run yarn in the frontend, e.g. make yarn cmd="add foo"
 	$(DC) exec frontend yarn $(cmd)
+
+sh-automation: ## Shell into the automation container
+	$(DC) exec automation bash
+
+npm: ## Run npm in automation, e.g. make npm cmd="install foo"
+	$(DC) exec automation npm $(cmd)
+
+cypress: ## Run the Cypress suite headlessly against the automation sandbox
+	$(DC) --profile automation run --rm cypress run $(cmd)
+
+cypress-frontend: ## Run the Cypress suite against the Nuxt admin (frontend:3000)
+	$(DC) --profile automation run --rm -e CYPRESS_BASE_URL=http://frontend:3000 cypress run $(cmd)
+
+automation-check: ## Format, lint and build the automation repo in its container
+	$(DC) exec automation npm run check
 
 psql: ## Open psql on the local database
 	$(DC) exec pgsql psql -U hom -d hom
@@ -93,4 +111,4 @@ composer: ## Run composer, e.g. make composer cmd="require foo/bar"
 test: ## Run the backend test suite
 	$(DC) exec backend php artisan test
 
-.PHONY: help init build up up-workers down destroy restart ps logs logs-backend logs-frontend logs-minio sh sh-frontend yarn psql redis-cli artisan migrate seed fresh composer test
+.PHONY: help init build up up-workers down destroy restart ps logs logs-backend logs-frontend logs-minio logs-automation sh sh-frontend sh-automation yarn npm cypress cypress-frontend automation-check psql redis-cli artisan migrate seed fresh composer test

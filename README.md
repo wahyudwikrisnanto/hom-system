@@ -10,7 +10,8 @@ hom-system/
 ├── compose.yml      # local-only docker environment
 ├── Makefile         # shortcuts (make help)
 ├── gym-backend/     # submodule → HMBcorp/hom-backend (Laravel 12 / PHP 8.2)
-└── gym-frontend/    # submodule → HMBcorp/hom-frontend (Nuxt 3 admin, SPA)
+├── gym-frontend/    # submodule → HMBcorp/hom-frontend (Nuxt 3 admin, SPA)
+└── automation/      # submodule → wahyudwikrisnanto/hom-cypress (Cypress + Vite sandbox)
 ```
 
 ## Getting started
@@ -43,6 +44,7 @@ apply on the next request), the frontend runs `yarn dev` with Vite HMR.
 | pgsql     | localhost:5433          | db/user `hom`, password `secret` |
 | redis     | localhost:6378          |                                |
 | mailpit   | http://localhost:8025   | catches all outgoing mail      |
+| automation| http://localhost:5173   | `vite dev` (React + shadcn/ui) |
 
 Inside the network, services talk over their names: `pgsql:5432`, `redis:6379`,
 `backend:8000`.
@@ -69,6 +71,11 @@ make test
 make psql
 make sh-frontend                 # bash in the frontend container
 make yarn cmd="add foo"
+make sh-automation               # bash in the automation container
+make npm cmd="install foo"
+make cypress                     # headless Cypress run (sandbox at automation:5173)
+make cypress-frontend            # same suite against the Nuxt admin
+make automation-check            # prettier + eslint + build for automation
 make destroy                     # tear down + delete db/redis volumes
 ```
 

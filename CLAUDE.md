@@ -11,7 +11,8 @@ hom-system/
 ├── compose.yml      # local-only docker env (this repo's only "code")
 ├── Makefile         # entry point for every dev command
 ├── gym-backend/     # submodule → git@github.com:HMBcorp/hom-backend.git
-└── gym-frontend/    # submodule → git@github.com:HMBcorp/hom-frontend.git
+├── gym-frontend/    # submodule → git@github.com:HMBcorp/hom-frontend.git
+└── automation/      # submodule → git@github.com:wahyudwikrisnanto/hom-cypress.git
 ```
 
 Submodules are separate repos, so **commits inside `gym-backend/` belong to backend repo**, not this one. Commit here only record submodule *pointer* plus compose/Makefile/docs changes. Change both: commit in submodule first, then commit updated pointer here.
@@ -25,7 +26,8 @@ make init          # git submodule update --init --recursive
 make build         # build hom-backend:local
 make up            # backend + frontend + pgsql + redis + mailpit
 make up-workers    # ...plus queue worker and scheduler (compose profile "workers")
-make logs-backend / make logs-frontend
+make logs-backend / make logs-frontend / make logs-automation
+make cypress       # headless Cypress run against the automation sandbox
 make down / make destroy   # destroy also drops db+redis volumes
 ```
 
@@ -37,6 +39,7 @@ make down / make destroy   # destroy also drops db+redis volumes
 | redis    | localhost:6378        | `redis:6379`    |
 | mailpit  | http://localhost:8025 | `mailpit:1025`  |
 | minio    | http://localhost:9001 (console), `:9000` (S3 API) | `minio:9000` |
+| automation | http://localhost:5173 | `automation:5173` |
 
 Docker network `hom-system`; user `hom`, password `secret` (throwaway, local only). DB app actually use is **`hom_apps_prod`** (local restore of production data) — `DB_DATABASE` in `gym-backend/.env`. Older near-empty `hom` database still exist on same server, so always pass database explicitly when querying by hand (`psql -U hom -d hom_apps_prod`); `-d hom` silently show stale, unrelated data. MinIO root user/password: `hom` / `hom-secret`. `minio-init` one-shot container create `hom-local` bucket on `make up` then exit — not long-lived service.
 
@@ -425,6 +428,14 @@ Currently **no working automated gate** on frontend — don't claim one ran:
 - `npx nuxi typecheck` fail too — `vue-tsc`/`typescript` not in `devDependencies`.
 
 So: verify changes in running app at http://localhost:3000 and watch `make logs-frontend` for Vite/Nitro errors. Keep types tight by hand since nothing check them. If you fix lint/typecheck setup, that a change to `gym-frontend`, and this section should be updated with working commands.
+
+## Automation orientation (`automation/`)
+
+Cypress suite plus a Vite + React + Tailwind + shadcn/ui sandbox app. Own `CLAUDE.md` — read it before touch that repo. Run through the bridge: `make sh-automation`, `make npm cmd="install foo"`, `make cypress` (sandbox target), `make cypress-frontend` (drive the Nuxt admin), `make automation-check` (prettier + eslint + `tsc -b && vite build`).
+
+Cypress service sit behind compose profile `automation`, so `make up` never start a test run. Vite `allowedHosts` list `automation` — dev server answer 403 to unknown Host header otherwise.
+
+**After produce or change code in `automation/`, always run `make automation-check` (or `npm run check` inside repo) and fix what it report before call the work done.**
 
 ## Commits
 
