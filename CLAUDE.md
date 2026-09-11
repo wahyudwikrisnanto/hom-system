@@ -40,6 +40,7 @@ make down / make destroy   # destroy also drops db+redis volumes
 | mailpit  | http://localhost:8025 | `mailpit:1025`  |
 | minio    | http://localhost:9001 (console), `:9000` (S3 API) | `minio:9000` |
 | automation | http://localhost:5173 | `automation:5173` |
+| automation API | (proxied at `/api`) | `automation:5174` |
 
 Docker network `hom-system`; user `hom`, password `secret` (throwaway, local only). DB app actually use is **`hom_apps_prod`** (local restore of production data) — `DB_DATABASE` in `gym-backend/.env`. Older near-empty `hom` database still exist on same server, so always pass database explicitly when querying by hand (`psql -U hom -d hom_apps_prod`); `-d hom` silently show stale, unrelated data. MinIO root user/password: `hom` / `hom-secret`. `minio-init` one-shot container create `hom-local` bucket on `make up` then exit — not long-lived service.
 
@@ -431,9 +432,26 @@ So: verify changes in running app at http://localhost:3000 and watch `make logs-
 
 ## Automation orientation (`automation/`)
 
-Cypress suite plus a Vite + React + Tailwind + shadcn/ui sandbox app. Own `CLAUDE.md` — read it before touch that repo. Run through the bridge: `make sh-automation`, `make npm cmd="install foo"`, `make cypress` (sandbox target), `make cypress-frontend` (drive the Nuxt admin), `make automation-check` (prettier + eslint + `tsc -b && vite build`).
+End-to-end test system for this stack: Cypress suites that drive **`gym-backend`** (CMS API, via `cy.request`) and **`gym-frontend`** (Nuxt admin, in the browser), plus a Vite + React + Tailwind + shadcn/ui control panel that show suites, runs and environments. Own `CLAUDE.md` — read it before touch that repo.
 
-Cypress service sit behind compose profile `automation`, so `make up` never start a test run. Vite `allowedHosts` list `automation` — dev server answer 403 to unknown Host header otherwise.
+Run through the bridge:
+
+```bash
+make cypress            # backend + frontend suites, recorded as one run
+make cypress-frontend   # Nuxt admin only
+make cypress-backend    # CMS API only
+make cypress-panel      # the control panel's own smoke suite
+make automation-migrate # sync panel schema + suite registry
+make psql-automation    # psql on hom_automation
+make automation-check   # prettier + eslint + `tsc -b && vite build`
+make sh-automation / make npm cmd="install foo"
+```
+
+Run history live in **own database `hom_automation`** on the same Postgres, created by `docker/pgsql/initdb/` on fresh volume. Separate from `hom_apps_prod` on purpose: `make fresh` wipe app data, never the test history. Cypress `after:run` hook write every headless run there; recording failure never fail a suite.
+
+The automation container run two process — panel API on 5174, Vite on 5173 which proxy `/api` to it. Cypress service sit behind compose profile `automation`, so `make up` never start a test run. Default target is `frontend:3000` (`CYPRESS_BASE_URL`) with CMS API at `backend:8000/cms/v1` (`CYPRESS_API_URL`). Vite `allowedHosts` list `automation` — dev server answer 403 to unknown Host header otherwise.
+
+Specs sign in as the standing local account (`tester@mail.com` / `password`), through `cy.login()` with `cy.session()` cache. Frontend specs select through `cypress/support/selectors.ts`, not inline CSS — `gym-frontend` carry no `data-cy` attribute yet, and that file is the one place to change when it do.
 
 **After produce or change code in `automation/`, always run `make automation-check` (or `npm run check` inside repo) and fix what it report before call the work done.**
 

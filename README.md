@@ -11,7 +11,7 @@ hom-system/
 ├── Makefile         # shortcuts (make help)
 ├── gym-backend/     # submodule → HMBcorp/hom-backend (Laravel 12 / PHP 8.2)
 ├── gym-frontend/    # submodule → HMBcorp/hom-frontend (Nuxt 3 admin, SPA)
-└── automation/      # submodule → wahyudwikrisnanto/hom-cypress (Cypress + Vite sandbox)
+└── automation/      # submodule → wahyudwikrisnanto/hom-cypress (Cypress E2E + control panel)
 ```
 
 ## Getting started
@@ -44,7 +44,7 @@ apply on the next request), the frontend runs `yarn dev` with Vite HMR.
 | pgsql     | localhost:5433          | db/user `hom`, password `secret` |
 | redis     | localhost:6378          |                                |
 | mailpit   | http://localhost:8025   | catches all outgoing mail      |
-| automation| http://localhost:5173   | `vite dev` (React + shadcn/ui) |
+| automation| http://localhost:5173   | E2E control panel (React + shadcn/ui) |
 
 Inside the network, services talk over their names: `pgsql:5432`, `redis:6379`,
 `backend:8000`.
@@ -73,8 +73,12 @@ make sh-frontend                 # bash in the frontend container
 make yarn cmd="add foo"
 make sh-automation               # bash in the automation container
 make npm cmd="install foo"
-make cypress                     # headless Cypress run (sandbox at automation:5173)
-make cypress-frontend            # same suite against the Nuxt admin
+make cypress                     # E2E suites against backend + frontend
+make cypress-frontend            # the Nuxt admin only
+make cypress-backend             # the CMS API only
+make cypress-panel               # the control panel's own smoke suite
+make automation-migrate          # sync the panel schema + suite registry
+make psql-automation             # psql on hom_automation
 make automation-check            # prettier + eslint + build for automation
 make destroy                     # tear down + delete db/redis volumes
 ```
@@ -85,6 +89,21 @@ make destroy                     # tear down + delete db/redis volumes
   and nothing here is meant for staging or production.
 - Files are created by the container as UID/GID 1000 by default. The Makefile exports
   your real `UID`/`GID` so ownership matches your host user.
+
+## Automation notes
+
+- `automation/` holds the end-to-end suites for this stack — `cypress/e2e/backend/`
+  drives the CMS API with `cy.request`, `cypress/e2e/frontend/` drives the Nuxt admin
+  in a browser, `cypress/e2e/panel/` smokes the control panel itself.
+- Every headless run is recorded into its **own** database, `hom_automation`, by the
+  `after:run` hook. Separate from the app database on purpose: `make fresh` wipes app
+  data and leaves the test history alone. A fresh postgres volume creates it from
+  `docker/pgsql/initdb/`.
+- The control panel at http://localhost:5173 reads that history. Its API runs in the
+  same container on 5174 and Vite proxies `/api` to it — no CORS, no base URL to set.
+- Suites are discovered from the spec files on disk; `automation/cypress/suites.json`
+  only adds a display name, area and owner. After adding a spec, run
+  `make automation-migrate`.
 
 ## Backend notes
 
