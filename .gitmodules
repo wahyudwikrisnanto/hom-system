@@ -7,3 +7,6 @@
 [submodule "gym-apps"]
 	path = gym-apps
 	url = git@github.com:HMBcorp/hom-apps.git
+[submodule "automation"]
+	path = automation
+	url = git@github.com:wahyudwikrisnanto/hom-cypress.git
