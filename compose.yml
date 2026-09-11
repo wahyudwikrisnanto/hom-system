@@ -112,6 +112,8 @@ services:
       POSTGRES_PASSWORD: secret
     volumes:
       - pgsql-data:/var/lib/postgresql/data
+      # Runs on a fresh volume only — creates the automation panel's database.
+      - ./docker/pgsql/initdb:/docker-entrypoint-initdb.d:ro
     networks:
       - hom-system
     healthcheck:
@@ -226,17 +228,27 @@ services:
     restart: unless-stopped
     working_dir: /app
     user: "${UID:-1000}:${GID:-1000}"
+    # Two processes: the panel's API on 5174 and Vite on 5173, which proxies
+    # /api to it. The schema sync runs first and is idempotent, so a fresh
+    # database and a restart take the same path.
     command: >
       sh -c "
         [ -d node_modules ] || npm ci;
+        npm run db:migrate;
+        node server/index.js &
         npm run dev -- --host 0.0.0.0 --port 5173
       "
     ports:
       - "5173:5173"
+    environment:
+      AUTOMATION_DATABASE_URL: postgres://hom:secret@pgsql:5432/hom_automation
     volumes:
       - ./automation:/app
     networks:
       - hom-system
+    depends_on:
+      pgsql:
+        condition: service_healthy
 
   # Headless Cypress runner. One-shot: `docker compose --profile automation run --rm
   # cypress` (or `make cypress`). Kept out of the default profile so `make up` does
@@ -250,9 +262,13 @@ services:
     entrypoint: ["cypress"]
     command: ["run"]
     environment:
-      # The sandbox app, not the admin panel — point at frontend:3000 to drive the
-      # Nuxt admin instead.
-      CYPRESS_BASE_URL: http://automation:5173
+      # The Nuxt admin is the default target; `make cypress-panel` overrides this
+      # to drive the control panel itself.
+      CYPRESS_BASE_URL: http://frontend:3000
+      CYPRESS_API_URL: http://backend:8000/cms/v1
+      # Set: the after:run hook records the run into Postgres. Unset it and the
+      # suite still runs, it just leaves no history behind.
+      AUTOMATION_DATABASE_URL: postgres://hom:secret@pgsql:5432/hom_automation
       # The image ships the binary under /root/.cache (world-readable), so leave
       # CYPRESS_CACHE_FOLDER alone — overriding it hides the preinstalled binary.
       HOME: /root
