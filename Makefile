@@ -63,11 +63,24 @@ sh-automation: ## Shell into the automation container
 npm: ## Run npm in automation, e.g. make npm cmd="install foo"
 	$(DC) exec automation npm $(cmd)
 
-cypress: ## Run the Cypress suite headlessly against the automation sandbox
-	$(DC) --profile automation run --rm cypress run $(cmd)
+# The panel has its own base URL, so it is not part of this run — see cypress-panel.
+cypress: ## Run the system E2E suites (backend + frontend) and record the run
+	$(DC) --profile automation run --rm cypress run --spec "cypress/e2e/{backend,frontend}/**/*.cy.ts" $(cmd)
 
-cypress-frontend: ## Run the Cypress suite against the Nuxt admin (frontend:3000)
-	$(DC) --profile automation run --rm -e CYPRESS_BASE_URL=http://frontend:3000 cypress run $(cmd)
+cypress-frontend: ## Drive the Nuxt admin only (cypress/e2e/frontend)
+	$(DC) --profile automation run --rm cypress run --spec "cypress/e2e/frontend/**/*.cy.ts" $(cmd)
+
+cypress-backend: ## Drive the CMS API only (cypress/e2e/backend)
+	$(DC) --profile automation run --rm cypress run --spec "cypress/e2e/backend/**/*.cy.ts" $(cmd)
+
+cypress-panel: ## Smoke the control panel itself (automation:5173)
+	$(DC) --profile automation run --rm -e CYPRESS_BASE_URL=http://automation:5173 cypress run --spec "cypress/e2e/panel/**/*.cy.ts" $(cmd)
+
+automation-migrate: ## Sync the automation schema and the suite registry
+	$(DC) exec automation npm run db:migrate
+
+psql-automation: ## Open psql on the automation panel's database
+	$(DC) exec pgsql psql -U hom -d hom_automation
 
 automation-check: ## Format, lint and build the automation repo in its container
 	$(DC) exec automation npm run check
@@ -111,4 +124,4 @@ composer: ## Run composer, e.g. make composer cmd="require foo/bar"
 test: ## Run the backend test suite
 	$(DC) exec backend php artisan test
 
-.PHONY: help init build up up-workers down destroy restart ps logs logs-backend logs-frontend logs-minio logs-automation sh sh-frontend sh-automation yarn npm cypress cypress-frontend automation-check psql redis-cli artisan migrate seed fresh composer test
+.PHONY: help init build up up-workers down destroy restart ps logs logs-backend logs-frontend logs-minio logs-automation sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel automation-migrate psql-automation automation-check psql redis-cli artisan migrate seed fresh composer test
