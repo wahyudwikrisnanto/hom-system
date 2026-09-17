@@ -19,6 +19,12 @@ build: ## Build images
 up: ## Start the local stack
 	$(DC) up -d
 
+dev-be: ## Run the backend natively (php artisan serve on :8000) — stateful services still need `make up`
+	cd gym-backend && php artisan serve --port=8000
+
+dev-fe: ## Run the frontend natively (yarn dev on :3000)
+	cd gym-frontend && yarn dev
+
 up-workers: ## Start the stack including queue + scheduler
 	$(DC) --profile workers up -d
 
@@ -124,4 +130,4 @@ composer: ## Run composer, e.g. make composer cmd="require foo/bar"
 test: ## Run the backend test suite
 	$(DC) exec backend php artisan test
 
-.PHONY: help init build up up-workers down destroy restart ps logs logs-backend logs-frontend logs-minio logs-automation sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel automation-migrate psql-automation automation-check psql redis-cli artisan migrate seed fresh composer test
+.PHONY: help init build up dev-be dev-fe up-workers down destroy restart ps logs logs-backend logs-frontend logs-minio logs-automation sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel automation-migrate psql-automation automation-check psql redis-cli artisan migrate seed fresh composer test
