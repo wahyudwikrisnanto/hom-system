@@ -24,9 +24,9 @@ All run through `make` (it export real `UID`/`GID` so container-made files not r
 ```bash
 make init          # git submodule update --init --recursive
 make build         # build hom-backend:local
-make up            # backend + frontend + pgsql + redis + mailpit
-make up-workers    # ...plus queue worker and scheduler (compose profile "workers")
-make logs-backend / make logs-frontend / make logs-automation
+make up            # backend + queue worker + frontend + pgsql + redis + mailpit
+make up-workers    # ...plus scheduler (compose profile "workers")
+make logs-backend / make logs-queue / make logs-frontend / make logs-automation
 make cypress       # headless Cypress run against the automation sandbox
 make down / make destroy   # destroy also drops db+redis volumes
 ```

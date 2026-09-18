@@ -60,20 +60,20 @@ services:
       redis:
         condition: service_healthy
 
-  # Queue worker — same image/mounts, just a different command.
-  # Start it explicitly: docker compose --profile workers up -d
+  # Queue worker — same image/mounts, just a different command. Starts with `make up`.
+  # `queue:listen` boots the app per job, so code edits apply without a restart
+  # (`queue:work` would keep serving the code it booted with).
   queue:
     extends:
       service: backend
     container_name: hom-backend-queue
-    profiles: ["workers"]
     # `extends` merges sequences, so a plain `ports: []` appends nothing and the worker
     # inherits backend's 8881 publish, then fails to bind. `!reset` drops it instead.
     ports: !reset []
     command: >
       sh -c "
         [ -f vendor/autoload.php ] || composer install --no-interaction --prefer-dist;
-        php artisan queue:work --sleep=3 --tries=3
+        php artisan queue:listen --sleep=3 --tries=3
       "
     depends_on:
       pgsql:

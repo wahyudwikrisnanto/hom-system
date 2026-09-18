@@ -25,7 +25,7 @@ dev-be: ## Run the backend natively (php artisan serve on :8000) — stateful se
 dev-fe: ## Run the frontend natively (yarn dev on :3000)
 	cd gym-frontend && yarn dev
 
-up-workers: ## Start the stack including queue + scheduler
+up-workers: ## Start the stack including the scheduler
 	$(DC) --profile workers up -d
 
 down: ## Stop the stack
@@ -44,6 +44,9 @@ logs: ## Tail logs of all services
 
 logs-backend: ## Tail backend logs
 	$(DC) logs -f --tail=100 backend
+
+logs-queue: ## Tail queue worker logs
+	$(DC) logs -f --tail=100 queue
 
 logs-frontend: ## Tail frontend logs
 	$(DC) logs -f --tail=100 frontend
@@ -130,4 +133,4 @@ composer: ## Run composer, e.g. make composer cmd="require foo/bar"
 test: ## Run the backend test suite
 	$(DC) exec backend php artisan test
 
-.PHONY: help init build up dev-be dev-fe up-workers down destroy restart ps logs logs-backend logs-frontend logs-minio logs-automation sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel automation-migrate psql-automation automation-check psql redis-cli artisan migrate seed fresh composer test
+.PHONY: help init build up dev-be dev-fe up-workers down destroy restart ps logs logs-backend logs-queue logs-frontend logs-minio logs-automation sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel automation-migrate psql-automation automation-check psql redis-cli artisan migrate seed fresh composer test
