@@ -411,7 +411,7 @@ build). Read it before build a screen. Need something not there: add it to
 - **Status never an ad-hoc coloured chip.** `composables/status.ts` hold every status
   vocabulary — `useStatus().resolve(value, domain)` return `{ tone, label }`, render
   `SharedUiBadge`. Add a domain there, not a local map in a page.
-- **Dialog is one shape** — sizes sm 420 / md 560 / lg 760, header and footer pinned with
+- **Dialog is one shape** — sizes sm 420 / md 560 / lg 760 (xl 1120 only for a table of records), header and footer pinned with
   body scrolling, confirming action last on the right. Destructive action are
   `intent="destructive"` (flat red) in a dialog, `outline` in a page header, and say what
   they do ("Cancel sale"), never just "Delete".
