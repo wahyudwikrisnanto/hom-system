@@ -139,6 +139,10 @@ Admin permissions read once per page load, from `GET cms/v1/auth/me`, and cached
 
 FormRequest read of `$this->route('<param>')` must go through `$route->hasParameter(...)` first — approval replay build route with no bound target, and bare `parameter()` throw `Route is not bound` there.
 
+Approval stay **optional** for everything added after the document targets: direct permission write now, its twin queue. Only `order`/`order_item` use `always`. Twin name is direct permission string plus `-with-approval`, casing kept (`customer.resetPassword-with-approval`); action-specific permission get own twin, generic CRUD route reuse domain `<domain>.edit-with-approval`.
+
+Non-CRUD operation on a record (merge, family move, reset password, reorder, pivot sync) is own `ApprovalAction` on the record's alias, with own handler under `handlers` in `config/approval.php` (falls back to `handler`). What it touch beyond the record — merged customer, family member, fingerprint uuid — ride in payload via `$request->merge([...])` before `capture()` plus `extraPayloadKeys()`. Nested route bind parent through `routeParameters()`, replay pick request per action through `replayRequestClass()`. Reorder with no parent is captured with class target (`Banner::class`) — `snapshotWithoutTarget()` give its before, and one pending per alias+action enforced in app code since the unique index key on id. Replay is always POST, so a request never branch on `method()` — key create-only checks on "no bound model".
+
 ### Controllers
 
 Thin: resolve input, build query or call service, return Resource. No business rules, no formatting.
@@ -510,4 +514,4 @@ password password
 role     approval-tester
 ```
 
-It hold `branch|membership|content` `.view` + `.edit-with-approval`, plus `approval.view|approve|reject`, so single login can both submit change and review it. It deliberately do **not** hold any direct `.edit`, which is what make writes queue.
+It hold `branch|membership|content` `.view` + `.edit-with-approval`, plus `approval.view|approve|reject`, so single login can both submit change and review it. It also hold the view + twin for class (incl. `class.mainschedule.add-with-approval`), add-on, payment-method, personal-trainer package, banner, questionnaire, customer (`edit|merge|family|assignMarketing|resetPassword-with-approval`), transaction edit, `payment.cancel-with-approval` and `customer-personal-trainer.assign-with-approval`. It deliberately do **not** hold any direct `.edit`, which is what make writes queue.
