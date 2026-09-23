@@ -324,7 +324,8 @@ build). Read it before build a screen. Need something not there: add it to
   `muted` for secondary panel), `SharedUiSection` (title + description + `#action`),
   `SharedUiBadge` (tone `neutral|primary|success|warning|danger|info`, `subtle` for label),
   `SharedUiField` + `SharedUiDescriptionList`, `SharedUiStatTile`, `SharedUiSwitch`,
-  `SharedUiTabs`, `SharedUiDataTable`, `SharedUiRowActions`, `SharedUiCollapsible`,
+  `SharedUiTabs`, `SharedUiDataTable`, `SharedUiRowActions`, `SharedUiActionMenu` (detail
+  header's secondary actions), `SharedUiCollapsible`,
   `SharedUiFormStatus`, `SharedUiEmptyState`, `SharedUiDialog` /
   `SharedUiConfirmDialog`, `SharedUiSeparator`, `SharedUiSkeleton`. Raw `VCard` with custom
   styling only when no primitive fit, and then match their look exactly.
