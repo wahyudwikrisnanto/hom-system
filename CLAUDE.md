@@ -427,6 +427,17 @@ build). Read it before build a screen. Need something not there: add it to
 - Every action permission-gated with `userHasPermission("admin.edit")` / `userHasAnyPermissions(...)` from auth store, and cards take `permission` prop (`<UiParentCard permission="admin.view">`). Route-level guarding handled by global middleware in `middleware/` (`auth.global.ts`, `permissions.global.ts`) — add page-level `definePageMeta({ middleware })` only when page need something extra.
 - Permission strings follow `<domain>.<action>` (`admin.view`, `admin.add`, `admin.edit`, `admin.delete`) and must match backend permission names.
 
+### Admin guide (`/guide`)
+
+In-app documentation, own layout (`layouts/guide.vue`) and sidebar, behind the same login. It is built to grow to every admin menu, so its shape is fixed:
+
+- **One folder per menu:** `content/guide/<topic>/{meta,en,id}.ts`. A new topic is a new folder, nothing else registers it — `content/guide/index.ts` globs them.
+- **`meta.ts` is eager and small** (who may read it, titles, section ids + permission gates, permission list). **`en.ts`/`id.ts` are lazy chunks**, one language of one topic, fetched when a page or the search needs them. Never import a body file directly; use `loadGuideBody`.
+- **Permission rule is in the data.** Every section names `direct` (+ `twin` for `-with-approval`); `useGuide()` is the only place that filters, for the sidebar, the page and the search alike. A twin-only reader gets the "needs approval" notice automatically.
+- **Name screen words as `[[English key]]`** (`[[Edit member]]`), never typed out: they are translated from `utils/locales/*.json` when drawn, so the guide says what the screen says and follows later corrections. The key must exist in `en.json`.
+- **Search** builds one folded index of all topics in both languages on first focus and matches either language whichever is active; keystrokes only read it. Keep body copy plain strings — no HTML.
+- Set `reviewed` in `meta.ts` when copy is re-checked against the screens. In dev, a section with no copy logs `[guide] … has no copy for: …`.
+
 ### Before finishing
 
 Currently **no working automated gate** on frontend — don't claim one ran:
