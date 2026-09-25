@@ -431,6 +431,17 @@ build). Read it before build a screen. Need something not there: add it to
 
 In-app documentation, own layout (`layouts/guide.vue`) and sidebar, behind the same login. It is built to grow to every admin menu, so its shape is fixed:
 
+- **The guide is part of the feature, not a follow-up.** Any change to a screen a topic
+  already documents — new button, renamed label, new filter or column, changed rule, new or
+  changed permission, a flow that moves elsewhere — **updates that topic in the same
+  change**, both `en.ts` and `id.ts`, plus `meta.ts` when sections or permissions shift.
+  Never "update the guide later"; a guide that describes a screen that no longer exists is
+  worse than no guide. Documented today: customer, lead, approval, visit, pt-cutting,
+  transaction, transaction-new, customer-membership, customer-personal-trainer — check
+  `content/guide/` before assuming a screen is undocumented. Re-shoot the screenshot under
+  `public/guide/{en,id}/<topic>/` when the picture no longer matches, blur member, staff and
+  trainer names, and bump `reviewed`. Say in the handover which topics you touched, or why
+  none needed it.
 - **One folder per menu:** `content/guide/<topic>/{meta,en,id}.ts`. A new topic is a new folder, nothing else registers it — `content/guide/index.ts` globs them.
 - **`meta.ts` is eager and small** (who may read it, titles, section ids + permission gates, permission list). **`en.ts`/`id.ts` are lazy chunks**, one language of one topic, fetched when a page or the search needs them. Never import a body file directly; use `loadGuideBody`.
 - **Permission rule is in the data.** Every section names `direct` (+ `twin` for `-with-approval`); `useGuide()` is the only place that filters, for the sidebar, the page and the search alike. A twin-only reader gets the "needs approval" notice automatically.
