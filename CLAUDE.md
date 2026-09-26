@@ -437,7 +437,7 @@ In-app documentation, own layout (`layouts/guide.vue`) and sidebar, behind the s
   change**, both `en.ts` and `id.ts`, plus `meta.ts` when sections or permissions shift.
   Never "update the guide later"; a guide that describes a screen that no longer exists is
   worse than no guide. Documented today: customer, lead, approval, visit, pt-cutting,
-  transaction, transaction-new, customer-membership, customer-personal-trainer — check
+  transaction, transaction-new, customer-membership, customer-personal-trainer, fpu — check
   `content/guide/` before assuming a screen is undocumented. Re-shoot the screenshot under
   `public/guide/{en,id}/<topic>/` when the picture no longer matches, blur member, staff and
   trainer names, and bump `reviewed`. Say in the handover which topics you touched, or why
