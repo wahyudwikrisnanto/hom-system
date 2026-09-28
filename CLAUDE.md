@@ -442,6 +442,11 @@ In-app documentation, own layout (`layouts/guide.vue`) and sidebar, behind the s
   `public/guide/{en,id}/<topic>/` when the picture no longer matches, blur member, staff and
   trainer names, and bump `reviewed`. Say in the handover which topics you touched, or why
   none needed it.
+- **Never create a topic unasked.** Only the topics listed above exist, and a new one is
+  built only when the user explicitly asks for that module's guide. A screen with no topic
+  — new module, or existing screen never documented — gets no guide folder, no copy and no
+  screenshot, even when you build or change that screen. Update what exists; create
+  nothing. Mention in the handover that the screen is undocumented, don't fill the gap.
 - **One folder per menu:** `content/guide/<topic>/{meta,en,id}.ts`. A new topic is a new folder, nothing else registers it — `content/guide/index.ts` globs them.
 - **`meta.ts` is eager and small** (who may read it, titles, section ids + permission gates, permission list). **`en.ts`/`id.ts` are lazy chunks**, one language of one topic, fetched when a page or the search needs them. Never import a body file directly; use `loadGuideBody`.
 - **Permission rule is in the data.** Every section names `direct` (+ `twin` for `-with-approval`); `useGuide()` is the only place that filters, for the sidebar, the page and the search alike. A twin-only reader gets the "needs approval" notice automatically.
