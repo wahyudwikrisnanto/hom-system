@@ -250,6 +250,41 @@ services:
       pgsql:
         condition: service_healthy
 
+  # The panel's own test instance: same code, its own database
+  # (hom_automation_test), so `make cypress-panel` never writes its spec data
+  # into the real one. Behind the "automation" profile — `make cypress-panel`
+  # starts it; `make up` does not. No host port: only Cypress reaches it.
+  automation-test:
+    image: node:22-slim
+    container_name: hom-automation-test
+    profiles: ["automation"]
+    working_dir: /app
+    user: "${UID:-1000}:${GID:-1000}"
+    command: >
+      sh -c "
+        npm run db:migrate;
+        node server/index.js &
+        npm run dev -- --host 0.0.0.0 --port 5173
+      "
+    environment:
+      AUTOMATION_DATABASE_URL: postgres://hom:secret@pgsql:5432/hom_automation_test
+      VITE_CACHE_DIR: node_modules/.vite-test
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5173/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+    volumes:
+      - ./automation:/app
+    networks:
+      - hom-system
+    depends_on:
+      pgsql:
+        condition: service_healthy
+      # Shares node_modules; the main container installs them.
+      automation:
+        condition: service_started
+
   # Headless Cypress runner. One-shot: `docker compose --profile automation run --rm
   # cypress` (or `make cypress`). Kept out of the default profile so `make up` does
   # not start a test run.

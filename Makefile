@@ -85,8 +85,13 @@ cypress-frontend: ## Drive the Nuxt admin only (cypress/e2e/frontend)
 cypress-backend: ## Drive the CMS API only (cypress/e2e/backend)
 	$(DC) --profile automation run --rm cypress run --spec "cypress/e2e/backend/**/*.cy.ts" $(cmd)
 
-cypress-panel: ## Smoke the control panel itself (automation:5173)
-	$(DC) --profile automation run --rm -e CYPRESS_BASE_URL=http://automation:5173 cypress run --spec "cypress/e2e/panel/**/*.cy.ts" $(cmd)
+# Against the panel's test instance and database, so spec data and these runs
+# never land in the real hom_automation.
+cypress-panel: ## Smoke the control panel itself (automation-test, hom_automation_test)
+	$(DC) --profile automation up -d --wait automation-test
+	$(DC) --profile automation run --rm -e CYPRESS_BASE_URL=http://automation-test:5173 \
+	  -e AUTOMATION_DATABASE_URL=postgres://hom:secret@pgsql:5432/hom_automation_test \
+	  cypress run --spec "cypress/e2e/panel/**/*.cy.ts" $(cmd)
 
 cypress-cases: ## Queue the panel's published cases (module=... or tag=...) for the runner
 	@curl -sf -X POST http://localhost:5173/api/run-requests -H 'Content-Type: application/json' \

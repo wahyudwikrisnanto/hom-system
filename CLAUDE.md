@@ -475,7 +475,7 @@ Run through the bridge:
 make cypress            # backend + frontend suites, recorded as one run
 make cypress-frontend   # Nuxt admin only
 make cypress-backend    # CMS API only
-make cypress-panel      # the control panel's own smoke suite
+make cypress-panel      # the control panel's own suite (automation-test + hom_automation_test)
 make automation-migrate # sync panel schema + suite registry
 make psql-automation    # psql on hom_automation
 make automation-check   # prettier + eslint + `tsc -b && vite build`
@@ -486,7 +486,7 @@ make automation-import  # automation/tests/ → panel database (upsert, never de
 make sh-automation / make npm cmd="install foo"
 ```
 
-Run history live in **own database `hom_automation`** on the same Postgres, created by `docker/pgsql/initdb/` on fresh volume. Separate from `hom_apps_prod` on purpose: `make fresh` wipe app data, never the test history. Cypress `after:run` hook write every headless run there; recording failure never fail a suite.
+Run history live in **own database `hom_automation`** on the same Postgres, created by `docker/pgsql/initdb/` on fresh volume. It is the **real** one — cases, steps, schedules and history people use. The panel's own specs never touch it: `make cypress-panel` starts `automation-test` (same code, profile `automation`, no host port) on **`hom_automation_test`** and records its runs there too. On an old volume create that database by hand once: `docker compose exec pgsql psql -U hom -d postgres -c "CREATE DATABASE hom_automation_test OWNER hom"`. Separate from `hom_apps_prod` on purpose: `make fresh` wipe app data, never the test history. Cypress `after:run` hook write every headless run there; recording failure never fail a suite.
 
 The automation container run two process — panel API on 5174, Vite on 5173 which proxy `/api` to it. API is plain `node`, not watched: edit `server/` then `docker compose restart automation` (plus `cypress-runner` for the worker). Cypress service sit behind compose profile `automation`, so `make up` never start a test run. `cypress-runner` is in default profile but only execute what someone queued from the panel; it run Chrome and stream a live view of the browser to the request's page (`/queue/:id`), which turn into the report (steps with timing + screen after each, failure screenshot, video) once recorded. Artifacts live in `automation/cypress/artifacts/` (gitignored, pruned after 14 days). Default target is `frontend:3000` (`CYPRESS_BASE_URL`) with CMS API at `backend:8000/cms/v1` (`CYPRESS_API_URL`). Vite `allowedHosts` list `automation` — dev server answer 403 to unknown Host header otherwise.
 
