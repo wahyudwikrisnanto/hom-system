@@ -467,7 +467,7 @@ So: verify changes in running app at http://localhost:3000 and watch `make logs-
 
 ## Automation orientation (`automation/`)
 
-End-to-end test system for this stack: Cypress suites that drive **`gym-backend`** (CMS API, via `cy.request`) and **`gym-frontend`** (Nuxt admin, in the browser), plus a Vite + React + Tailwind + shadcn/ui control panel that show suites, runs and environments — and author test cases from reusable steps (versioned, grouped by free-text module), queued from a Run button. Own `CLAUDE.md` — read it before touch that repo.
+End-to-end test system for this stack: Cypress suites that drive **`gym-backend`** (CMS API, via `cy.request`) and **`gym-frontend`** (Nuxt admin, in the browser), plus a Vite + React + Tailwind + shadcn/ui control panel that show suites, runs and environments — and author test cases from reusable steps (versioned, grouped by module — a `modules` table shared by cases and steps), queued from a Run button or on a cron schedule, run once per data-set row, reported by email/Slack on failure, and exported to `automation/tests/` for git. Own `CLAUDE.md` — read it before touch that repo.
 
 Run through the bridge:
 
@@ -481,6 +481,8 @@ make psql-automation    # psql on hom_automation
 make automation-check   # prettier + eslint + `tsc -b && vite build`
 make logs-runner        # panel run-queue worker (cypress-runner)
 make cypress-cases module=Branch   # queue a module's published cases (or tag=smoke)
+make automation-export  # authored modules/steps/cases → automation/tests/ (commit them)
+make automation-import  # automation/tests/ → panel database (upsert, never deletes)
 make sh-automation / make npm cmd="install foo"
 ```
 
