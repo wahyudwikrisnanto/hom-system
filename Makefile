@@ -93,9 +93,10 @@ cypress-panel: ## Smoke the control panel itself (automation-test, hom_automatio
 	  -e AUTOMATION_DATABASE_URL=postgres://hom:secret@pgsql:5432/hom_automation_test \
 	  cypress run --spec "cypress/e2e/panel/**/*.cy.ts" $(cmd)
 
-cypress-cases: ## Queue the panel's published cases (module=... or tag=...) for the runner
+cases_kind = $(if $(tag),tag,$(if $(suite),suite,module))
+cypress-cases: ## Queue the panel's published cases (module=..., tag=... or suite=...) for the runner
 	@curl -sf -X POST http://localhost:5173/api/run-requests -H 'Content-Type: application/json' \
-	  -d '{"kind":"$(if $(tag),tag,module)","$(if $(tag),tag,module)":"$(or $(tag),$(module))","environmentId":"$(or $(env),local-admin)","trigger":"cli"}' && echo
+	  -d '{"kind":"$(cases_kind)","$(cases_kind)":"$(or $(tag),$(suite),$(module))","environmentId":"$(or $(env),local-admin)","trigger":"cli"}' && echo
 
 automation-export: ## Write authored modules, steps and cases to automation/tests/ (commit them)
 	$(DC) exec automation node server/tests-io.js export
