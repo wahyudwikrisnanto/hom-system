@@ -253,6 +253,30 @@ services:
   # Headless Cypress runner. One-shot: `docker compose --profile automation run --rm
   # cypress` (or `make cypress`). Kept out of the default profile so `make up` does
   # not start a test run.
+  # The panel's run queue worker. Long-lived, but it only executes what someone
+  # queued from the panel's Run button, so `make up` still never starts a test
+  # run by itself. Same image, env and mount as the one-shot `cypress` service.
+  cypress-runner:
+    image: cypress/included:15.21.1
+    container_name: hom-cypress-runner
+    restart: unless-stopped
+    working_dir: /app
+    user: "${UID:-1000}:${GID:-1000}"
+    entrypoint: ["node", "server/runner.js"]
+    environment:
+      # The panel API that receives the live view (frames + step events).
+      AUTOMATION_API_URL: http://automation:5174
+      CYPRESS_BASE_URL: http://frontend:3000
+      CYPRESS_API_URL: http://backend:8000/cms/v1
+      AUTOMATION_DATABASE_URL: postgres://hom:secret@pgsql:5432/hom_automation
+      HOME: /root
+    volumes:
+      - ./automation:/app
+    networks:
+      - hom-system
+    depends_on:
+      - automation
+
   cypress:
     image: cypress/included:15.21.1
     container_name: hom-cypress

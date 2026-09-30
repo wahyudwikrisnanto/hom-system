@@ -57,6 +57,9 @@ logs-minio: ## Tail minio logs
 logs-automation: ## Tail automation (Vite sandbox) logs
 	$(DC) logs -f --tail=100 automation
 
+logs-runner: ## Tail the panel's run queue worker
+	$(DC) logs -f cypress-runner
+
 sh: ## Shell into the backend container
 	$(DC) exec backend bash
 
@@ -84,6 +87,10 @@ cypress-backend: ## Drive the CMS API only (cypress/e2e/backend)
 
 cypress-panel: ## Smoke the control panel itself (automation:5173)
 	$(DC) --profile automation run --rm -e CYPRESS_BASE_URL=http://automation:5173 cypress run --spec "cypress/e2e/panel/**/*.cy.ts" $(cmd)
+
+cypress-cases: ## Queue the panel's published cases (module=... or tag=...) for the runner
+	@curl -sf -X POST http://localhost:5173/api/run-requests -H 'Content-Type: application/json' \
+	  -d '{"kind":"$(if $(tag),tag,module)","$(if $(tag),tag,module)":"$(or $(tag),$(module))","environmentId":"$(or $(env),local-admin)"}' && echo
 
 automation-migrate: ## Sync the automation schema and the suite registry
 	$(DC) exec automation npm run db:migrate
@@ -133,4 +140,4 @@ composer: ## Run composer, e.g. make composer cmd="require foo/bar"
 test: ## Run the backend test suite
 	$(DC) exec backend php artisan test
 
-.PHONY: help init build up dev-be dev-fe up-workers down destroy restart ps logs logs-backend logs-queue logs-frontend logs-minio logs-automation sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel automation-migrate psql-automation automation-check psql redis-cli artisan migrate seed fresh composer test
+.PHONY: help init build up dev-be dev-fe up-workers down destroy restart ps logs logs-backend logs-queue logs-frontend logs-minio logs-automation logs-runner sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel cypress-cases automation-migrate psql-automation automation-check psql redis-cli artisan migrate seed fresh composer test
