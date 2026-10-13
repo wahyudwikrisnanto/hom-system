@@ -85,12 +85,12 @@ cypress-frontend: ## Drive the Nuxt admin only (cypress/e2e/frontend)
 cypress-backend: ## Drive the CMS API only (cypress/e2e/backend)
 	$(DC) --profile automation run --rm cypress run --spec "cypress/e2e/backend/**/*.cy.ts" $(cmd)
 
-# Against the panel's test instance and database, so spec data and these runs
-# never land in the real hom_automation.
-cypress-panel: ## Smoke the control panel itself (automation-test, hom_automation_test)
+# Against the panel's test instance and data directory, so spec data and these
+# runs never land in the real automation/data.
+cypress-panel: ## Smoke the control panel itself (automation-test, automation/data/test)
 	$(DC) --profile automation up -d --wait automation-test
 	$(DC) --profile automation run --rm -e CYPRESS_BASE_URL=http://automation-test:5173 \
-	  -e AUTOMATION_DATABASE_URL=postgres://hom:secret@pgsql:5432/hom_automation_test \
+	  -e AUTOMATION_DATA_DIR=/app/data/test \
 	  cypress run --spec "cypress/e2e/panel/**/*.cy.ts" $(cmd)
 
 cases_kind = $(if $(tag),tag,$(if $(suite),suite,module))
@@ -98,17 +98,11 @@ cypress-cases: ## Queue the panel's published cases (module=..., tag=... or suit
 	@curl -sf -X POST http://localhost:5173/api/run-requests -H 'Content-Type: application/json' \
 	  -d '{"kind":"$(cases_kind)","$(cases_kind)":"$(or $(tag),$(suite),$(module))","environmentId":"$(or $(env),local-admin)","trigger":"cli"}' && echo
 
-automation-export: ## Write authored modules, steps and cases to automation/tests/ (commit them)
-	$(DC) exec automation node server/tests-io.js export
-
-automation-import: ## Upsert automation/tests/ into the panel database (never deletes)
-	$(DC) exec automation node server/tests-io.js import
-
-automation-migrate: ## Sync the automation schema and the suite registry
+automation-migrate: ## Sync the automation schema and the environments
 	$(DC) exec automation npm run db:migrate
 
-psql-automation: ## Open psql on the automation panel's database
-	$(DC) exec pgsql psql -U hom -d hom_automation
+sql-automation: ## Query the panel's SQLite data, e.g. make sql-automation q="SELECT key, title FROM test_cases"
+	$(DC) exec automation node server/sql.js "$(q)"
 
 automation-check: ## Format, lint and build the automation repo in its container
 	$(DC) exec automation npm run check
@@ -152,4 +146,4 @@ composer: ## Run composer, e.g. make composer cmd="require foo/bar"
 test: ## Run the backend test suite
 	$(DC) exec backend php artisan test
 
-.PHONY: help init build up dev-be dev-fe up-workers down destroy restart ps logs logs-backend logs-queue logs-frontend logs-minio logs-automation logs-runner sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel cypress-cases automation-export automation-import automation-migrate psql-automation automation-check psql redis-cli artisan migrate seed fresh composer test
+.PHONY: help init build up dev-be dev-fe up-workers down destroy restart ps logs logs-backend logs-queue logs-frontend logs-minio logs-automation logs-runner sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel cypress-cases automation-migrate sql-automation automation-check psql redis-cli artisan migrate seed fresh composer test

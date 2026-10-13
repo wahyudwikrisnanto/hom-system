@@ -112,8 +112,6 @@ services:
       POSTGRES_PASSWORD: secret
     volumes:
       - pgsql-data:/var/lib/postgresql/data
-      # Runs on a fresh volume only — creates the automation panel's database.
-      - ./docker/pgsql/initdb:/docker-entrypoint-initdb.d:ro
     networks:
       - hom-system
     healthcheck:
@@ -230,7 +228,7 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     # Two processes: the panel's API on 5174 and Vite on 5173, which proxies
     # /api to it. The schema sync runs first and is idempotent, so a fresh
-    # database and a restart take the same path.
+    # data directory and a restart take the same path.
     command: >
       sh -c "
         [ -d node_modules ] || npm ci;
@@ -241,17 +239,17 @@ services:
     ports:
       - "5173:5173"
     environment:
-      AUTOMATION_DATABASE_URL: postgres://hom:secret@pgsql:5432/hom_automation
+      # SQLite files: authored.sqlite (committed) + local.sqlite (gitignored).
+      AUTOMATION_DATA_DIR: /app/data
+      # node:sqlite is still flagged experimental on Node 22.
+      NODE_OPTIONS: --disable-warning=ExperimentalWarning
     volumes:
       - ./automation:/app
     networks:
       - hom-system
-    depends_on:
-      pgsql:
-        condition: service_healthy
 
-  # The panel's own test instance: same code, its own database
-  # (hom_automation_test), so `make cypress-panel` never writes its spec data
+  # The panel's own test instance: same code, its own data directory
+  # (data/test, gitignored), so `make cypress-panel` never writes its spec data
   # into the real one. Behind the "automation" profile — `make cypress-panel`
   # starts it; `make up` does not. No host port: only Cypress reaches it.
   automation-test:
@@ -267,7 +265,8 @@ services:
         npm run dev -- --host 0.0.0.0 --port 5173
       "
     environment:
-      AUTOMATION_DATABASE_URL: postgres://hom:secret@pgsql:5432/hom_automation_test
+      AUTOMATION_DATA_DIR: /app/data/test
+      NODE_OPTIONS: --disable-warning=ExperimentalWarning
       VITE_CACHE_DIR: node_modules/.vite-test
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:5173/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
@@ -279,8 +278,6 @@ services:
     networks:
       - hom-system
     depends_on:
-      pgsql:
-        condition: service_healthy
       # Shares node_modules; the main container installs them.
       automation:
         condition: service_started
@@ -303,7 +300,7 @@ services:
       AUTOMATION_API_URL: http://automation:5174
       CYPRESS_BASE_URL: http://frontend:3000
       CYPRESS_API_URL: http://backend:8000/cms/v1
-      AUTOMATION_DATABASE_URL: postgres://hom:secret@pgsql:5432/hom_automation
+      AUTOMATION_DATA_DIR: /app/data
       HOME: /root
     volumes:
       - ./automation:/app
@@ -325,9 +322,9 @@ services:
       # to drive the control panel itself.
       CYPRESS_BASE_URL: http://frontend:3000
       CYPRESS_API_URL: http://backend:8000/cms/v1
-      # Set: the after:run hook records the run into Postgres. Unset it and the
-      # suite still runs, it just leaves no history behind.
-      AUTOMATION_DATABASE_URL: postgres://hom:secret@pgsql:5432/hom_automation
+      # Set: the after:run hook records the run into data/local.sqlite. Unset
+      # it and the suite still runs, it just leaves no history behind.
+      AUTOMATION_DATA_DIR: /app/data
       # The image ships the binary under /root/.cache (world-readable), so leave
       # CYPRESS_CACHE_FOLDER alone — overriding it hides the preinstalled binary.
       HOME: /root

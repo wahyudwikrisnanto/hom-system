@@ -467,7 +467,7 @@ So: verify changes in running app at http://localhost:3000 and watch `make logs-
 
 ## Automation orientation (`automation/`)
 
-End-to-end test system for this stack: Cypress suites that drive **`gym-backend`** (CMS API, via `cy.request`) and **`gym-frontend`** (Nuxt admin, in the browser), plus a Vite + React + Tailwind + shadcn/ui control panel that show runs and environments — and author test cases from reusable steps (versioned, grouped by module — a `modules` table shared by cases and steps), grouped into suites (named sets of whole modules, tags or picked cases, resolved at queue time with default priorities — e.g. "Critical Path" = Auth + Transaction, P1; kept in the database, spec files are not suites and run only from `make`), queued from a Run button or on a cron schedule, run once per data-set row, reported by email/Slack on failure, and exported to `automation/tests/` for git. Own `CLAUDE.md` — read it before touch that repo.
+End-to-end test system for this stack: Cypress suites that drive **`gym-backend`** (CMS API, via `cy.request`) and **`gym-frontend`** (Nuxt admin, in the browser), plus a Vite + React + Tailwind + shadcn/ui control panel that show runs and environments — and author test cases from reusable steps (versioned, grouped by module — a `modules` table shared by cases and steps), grouped into suites (named sets of whole modules, tags or picked cases, resolved at queue time with default priorities — e.g. "Critical Path" = Auth + Transaction, P1; kept in the database, spec files are not suites and run only from `make`), queued from a Run button or on a cron schedule, run once per data-set row, reported by email/Slack on failure, and versioned in git as the SQLite file `automation/data/authored.sqlite`. Own `CLAUDE.md` — read it before touch that repo.
 
 Run through the bridge:
 
@@ -475,18 +475,16 @@ Run through the bridge:
 make cypress            # backend + frontend suites, recorded as one run
 make cypress-frontend   # Nuxt admin only
 make cypress-backend    # CMS API only
-make cypress-panel      # the control panel's own suite (automation-test + hom_automation_test)
+make cypress-panel      # the control panel's own suite (automation-test + automation/data/test/)
 make automation-migrate # sync panel schema + environments
-make psql-automation    # psql on hom_automation
+make sql-automation q="SELECT key, title FROM test_cases"   # ad-hoc SQL on the panel's data
 make automation-check   # prettier + eslint + `tsc -b && vite build`
 make logs-runner        # panel run-queue worker (cypress-runner)
 make cypress-cases module=Branch   # queue a module's published cases (or tag=smoke, suite=TS-1)
-make automation-export  # authored modules/steps/cases → automation/tests/ (commit them)
-make automation-import  # automation/tests/ → panel database (upsert, never deletes)
 make sh-automation / make npm cmd="install foo"
 ```
 
-Run history live in **own database `hom_automation`** on the same Postgres, created by `docker/pgsql/initdb/` on fresh volume. It is the **real** one — cases, steps, schedules and history people use. The panel's own specs never touch it: `make cypress-panel` starts `automation-test` (same code, profile `automation`, no host port) on **`hom_automation_test`** and records its runs there too. On an old volume create that database by hand once: `docker compose exec pgsql psql -U hom -d postgres -c "CREATE DATABASE hom_automation_test OWNER hom"`. Separate from `hom_apps_prod` on purpose: `make fresh` wipe app data, never the test history. Cypress `after:run` hook write every headless run there; recording failure never fail a suite.
+Panel data live in **SQLite**, not on the app's Postgres, under `automation/data/` (`AUTOMATION_DATA_DIR`): **`authored.sqlite`** — modules, steps, cases, suites, with their versions — is **committed** in the automation repo, so authoring in the panel dirty that file and it go in with the work like code (binary: no merge, pull before authoring; restart `automation` + `cypress-runner` after a pull change it). **`local.sqlite`** — runs, queue, schedules, environments with secret variables, notification targets, each case's newest result — is gitignored and must never be committed. Both are the **real** ones people use. The panel's own specs never touch them: `make cypress-panel` starts `automation-test` (same code, profile `automation`, no host port) on **`automation/data/test/`** and records its runs there too. `make fresh` can never touch test history. Cypress `after:run` hook write every headless run into `local.sqlite`; recording failure never fail a suite. The old `hom_automation`/`hom_automation_test` Postgres databases are retired (left on existing volumes, unused).
 
 The automation container run two process — panel API on 5174, Vite on 5173 which proxy `/api` to it. API is plain `node`, not watched: edit `server/` then `docker compose restart automation` (plus `cypress-runner` for the worker). Cypress service sit behind compose profile `automation`, so `make up` never start a test run. `cypress-runner` is in default profile but only execute what someone queued from the panel; it run Chrome and stream a live view of the browser to the request's page (`/queue/:id`), which turn into the report (steps with timing + screen after each, failure screenshot, video) once recorded. Artifacts live in `automation/cypress/artifacts/` (gitignored, pruned after 14 days). Default target is `frontend:3000` (`CYPRESS_BASE_URL`) with CMS API at `backend:8000/cms/v1` (`CYPRESS_API_URL`). Vite `allowedHosts` list `automation` — dev server answer 403 to unknown Host header otherwise.
 
