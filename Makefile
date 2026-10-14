@@ -104,6 +104,10 @@ automation-migrate: ## Sync the automation schema and the environments
 sql-automation: ## Query the panel's SQLite data, e.g. make sql-automation q="SELECT key, title FROM test_cases"
 	$(DC) exec automation node server/sql.js "$(q)"
 
+# On the host, not in Docker: it runs the `claude` CLI you are logged in to.
+agent: ## Run the "Fix with Claude" agent on the host (needs Node 20+ and the claude CLI)
+	node automation/agent/host.mjs
+
 automation-check: ## Format, lint and build the automation repo in its container
 	$(DC) exec automation npm run check
 
@@ -146,4 +150,4 @@ composer: ## Run composer, e.g. make composer cmd="require foo/bar"
 test: ## Run the backend test suite
 	$(DC) exec backend php artisan test
 
-.PHONY: help init build up dev-be dev-fe up-workers down destroy restart ps logs logs-backend logs-queue logs-frontend logs-minio logs-automation logs-runner sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel cypress-cases automation-migrate sql-automation automation-check psql redis-cli artisan migrate seed fresh composer test
+.PHONY: help init build up dev-be dev-fe up-workers down destroy restart ps logs logs-backend logs-queue logs-frontend logs-minio logs-automation logs-runner sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel cypress-cases automation-migrate sql-automation agent automation-check psql redis-cli artisan migrate seed fresh composer test
