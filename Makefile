@@ -105,7 +105,7 @@ sql-automation: ## Query the panel's SQLite data, e.g. make sql-automation q="SE
 	$(DC) exec automation node server/sql.js "$(q)"
 
 # On the host, not in Docker: it runs the `claude` CLI you are logged in to.
-agent: ## Run the "Fix with Claude" agent on the host (needs Node 20+ and the claude CLI)
+agent: ## Run the triage + "Fix with Claude" agent on the host (Node 20+, claude CLI)
 	node automation/agent/host.mjs
 
 automation-check: ## Format, lint and build the automation repo in its container
