@@ -4,3 +4,6 @@
 .DS_Store
 *.log
 .plane-mapper-state.json
+
+# "Fix with Claude" worktrees (automation/agent/host.mjs), one per fix
+.fixes/
