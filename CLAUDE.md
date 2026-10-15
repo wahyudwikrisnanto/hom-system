@@ -209,6 +209,19 @@ Failing contract test mean consumer break, not that test stale. Change fixture o
 
 Every datetime column is `timestamptz`. Use `timestampTz('x')`, `timestampsTz()`, `softDeletesTz()` — never `timestamp()`, `timestamps()`, `dateTime()`, which create Postgres `timestamp without time zone` and drop the offset. Applies to new columns and new tables; tables already on `timestamps()` stay as they are. Comparison like `where('end_at', '<=', now())` is wrong on naive column whenever app and database session timezone differ.
 
+### Branch time zones
+
+Each branch carry own zone (`branches.timezone`: `Asia/Jakarta` WIB default, `Asia/Makassar` WITA, `Asia/Jayapura` WIT). Storage stay `timestamptz` instants; zone only matter when instant become calendar day or hour. **Never hardcode `Asia/Jakarta`** — resolve zone from branch:
+
+- **Entitlement** day (start, 23:59:59 expiry, extension, upgrade, freeze days, transfer) = **home branch** zone: `$upa->timezone()`. Write expiry through `expiry_end_of_day($at, $tz)`, add period through `OrderService::resolvePeriod(..., $tz)` — month math on local calendar, result in UTC.
+- **Visit, class, PT cutting, booking** = the record's own `branch_id`: `gym_timezone($branchId)`. Ampaba date strings = club's zone: `BranchTimezones::ofClub($idClub)`.
+- **Report/dashboard day or month** = each branch's own. `ReportDateRange::resolve()` / `MonthWindow::parse()` return `LocalWindow`; narrow with `->apply($q, 'col', 'branch_col')` (one range per zone, index stay usable), aggregate with `->filterSql(...)`, group with `col AT TIME ZONE <BranchTimezones::sqlZone('branch_col')>`. Never `(col AT TIME ZONE tz)::date` in WHERE — kill index.
+- **Daily job** run hourly and act on zones whose local hour arrived (see `product-active:expire-reminder`).
+- Printed doc/approval text: `gym_date($at, $fmt, $tz)`, label `BranchTimezone::labelOf($tz)`.
+- Bind Carbon in UTC (`->utc()`): models carry no `$dateFormat`, query grammar drop offset.
+
+Zone map cached (`BranchTimezones::map()`, flushed on branch save). Test multi-zone case with `Branch::factory()->create(['timezone' => 'Asia/Makassar'])`.
+
 ### Scopes and relations
 
 - Every reusable query predicate is scope on model — `scopeFilter`, `scopeFilterByIsBooked`, `scopeFilterCategoryIds`, `scopeFilterTab`. Controllers chain scopes; not rebuild `where` clauses inline. Scopes take typed nullable params, guard with `when()`/`blank()`, return `Builder`.
@@ -421,6 +434,12 @@ build). Read it before build a screen. Need something not there: add it to
   body scrolling, confirming action last on the right. Destructive action are
   `intent="destructive"` (flat red) in a dialog, `outline` in a page header, and say what
   they do ("Cancel sale"), never just "Delete".
+
+### Branch time zones
+
+Branch-bound date/time (sale, payment, visit, class, entitlement start/expiry, freeze) shown on **record's branch clock**, never browser's: `useBranchTime().formatAt(value, source, format)` (`composables/branch-time.ts`), `source` = branch id, `{ id }`, `{ branch_id }` or zone. Format with time get tag "WIB/WITA/WIT" only when branch zone differ from browser; date alone no tag. Entitlement use `home_branch_id`/`home_branch`. Audit stamps (approval requested/reviewed, admin created_at) stay browser via `formatDate`.
+
+Input the admin pick is branch wall clock: read with `toLocalInput(instant, source)`, send with `toInstant(local, source)` (ISO with branch offset); weekly slot times `timeToZone`/`timeInZone`. Report/FPU filters send plain `Y-m-d` days — backend read them per branch. Zones load once from `GET branch/timezones` (`stores/branchTimezones.ts`). Never hardcode `+07:00`, `utcOffset(7)` or "WIB".
 
 ### Lists and permissions
 
