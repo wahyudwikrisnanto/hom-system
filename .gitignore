@@ -7,3 +7,6 @@
 
 # "Fix with Claude" worktrees (automation/agent/host.mjs), one per fix
 .fixes/
+
+# Test case assistant browser profiles and MCP config (automation/agent/assist.mjs)
+.assists/
