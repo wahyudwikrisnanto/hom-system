@@ -341,7 +341,7 @@ build). Read it before build a screen. Need something not there: add it to
   `SharedUiTabs`, `SharedUiDataTable`, `SharedUiRowActions`, `SharedUiActionMenu` (detail
   header's secondary actions), `SharedUiCollapsible`,
   `SharedUiFormStatus`, `SharedUiEmptyState`, `SharedUiDialog` /
-  `SharedUiConfirmDialog`, `SharedUiSeparator`, `SharedUiSkeleton`. Raw `VCard` with custom
+  `SharedUiConfirmDialog`, `SharedUiSeparator`, `SharedUiSkeleton`, `SharedUiUnsavedMark`. Raw `VCard` with custom
   styling only when no primitive fit, and then match their look exactly.
 - **Layout is a component too** — `SharedUiListPage`, `SharedUiDetailLayout`,
   `SharedUiFormLayout` + `SharedUiFormActions`, `SharedUiPageHeader`. Back navigation live in
