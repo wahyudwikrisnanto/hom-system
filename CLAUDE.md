@@ -219,6 +219,7 @@ Each branch carry own zone (`branches.timezone`: `Asia/Jakarta` WIB default, `As
 - **Daily job** run hourly and act on zones whose local hour arrived (see `product-active:expire-reminder`).
 - Printed doc/approval text: `gym_date($at, $fmt, $tz)`, label `BranchTimezone::labelOf($tz)`.
 - Bind Carbon in UTC (`->utc()`): models carry no `$dateFormat`, query grammar drop offset.
+- **Session zone pinned UTC** (`'timezone' => 'UTC'` on `pgsql` in `config/database.php`) — keep it. Datetime cast write UTC clock text with no offset, so `timestamptz` read it in session zone; DB server left on `Asia/Jakarta` file every write 7h early on **every** branch (typed 08:00 shown 01:00) while reads still look right. Never drop the pin, never `SET TIME ZONE` mid-request. Test write path with `docker compose exec -e PGTZ=Asia/Jakarta backend …` — local server is UTC, so bug hide there.
 
 Zone map cached (`BranchTimezones::map()`, flushed on branch save). Test multi-zone case with `Branch::factory()->create(['timezone' => 'Asia/Makassar'])`.
 
