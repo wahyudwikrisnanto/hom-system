@@ -5,7 +5,9 @@
 *.log
 .plane-mapper-state.json
 
-# "Fix with Claude" worktrees (automation/agent/host.mjs), one per fix
+# Work session worktrees (automation/agent/host.mjs), one per session;
+# .fixes/ is where they lived before work sessions
+.work/
 .fixes/
 
 # Test case assistant browser profiles and MCP config (automation/agent/assist.mjs)
