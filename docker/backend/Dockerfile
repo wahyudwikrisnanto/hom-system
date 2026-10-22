@@ -7,7 +7,7 @@
 # from disk (edit → refresh, no rebuild, no restart).
 #
 # Build context is this directory only — nothing is copied from the app.
-ARG PHP_VERSION=8.2
+ARG PHP_VERSION=8.2.35
 
 FROM php:${PHP_VERSION}-cli-bookworm
 

@@ -22,7 +22,7 @@ services:
       context: ./docker/backend
       dockerfile: Dockerfile
       args:
-        PHP_VERSION: "8.2"
+        PHP_VERSION: "8.2.35"
         UID: "${UID:-1000}"
         GID: "${GID:-1000}"
         USER: hom
