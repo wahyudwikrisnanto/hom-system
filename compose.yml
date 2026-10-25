@@ -210,6 +210,11 @@ services:
       # gym-frontend/.env (dotenv never overwrites an already-set var), so an empty
       # value here silently breaks the map picker. Keep the key in gym-frontend/.env.
       NUXT_TELEMETRY_DISABLED: "1"
+      # Watch by polling, not inotify. The host's watch budget (fs.inotify.max_user_watches)
+      # is shared with every editor and language server on the machine; once it runs out
+      # the dev server crash-loops on ENOSPC and the admin answers 503.
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "1000"
     volumes:
       - ./gym-frontend:/app
     networks:
