@@ -65,7 +65,7 @@ Env gotchas worth know before debug config:
 - Backend config live in `gym-backend/.env`, seeded on first boot from `docker/backend/env.local`. Compose `environment:` does **not** configure served app — `artisan serve` only forward whitelist of env vars to PHP dev server. Put backend settings in `docker/backend/env.local` / `.env`, never in compose.
 - Stale behaviour after config change usually cached config: `make artisan cmd="config:clear"`.
 - `make seed` run offline-safe seeders; `php artisan db:seed` fail locally because `DatabaseSeeder` start with Ampaba partner API. `make fresh` drop `ampaba` schema first because `migrate:fresh` only clear `public` search path.
-- Frontend reach API through Nitro `/api` proxy, which strip `/api`, so `BACKEND_API_URL` carry CMS prefix (`http://backend:8000/cms/v1`). Mock handlers in `gym-frontend/server/api/` shadow some paths before proxy see them.
+- Frontend reach API through Nitro `/api` proxy, which strip `/api`, so `BACKEND_API_URL` carry CMS prefix (`http://backend:8000/cms/v1`).
 - File uploads use `s3` disk (`FILESYSTEM_FILE_UPLOAD`), backed locally by MinIO — `AWS_*` vars in `env.local`/`.env` point at `http://minio:9000` with `AWS_USE_PATH_STYLE_ENDPOINT=true`. Missing-region error on `s3` calls mean those vars not in `gym-backend/.env` (only synced from `env.local` on first boot — add by hand and `config:clear` otherwise).
 - Frontend env work opposite way: anything in compose `environment:` **override** `gym-frontend/.env`, because dotenv not overwrite already-set var. Empty value there still count as set — that how `NUXT_GOOGLEMAPS_API_KEY: ""` silently kill map picker. Keep frontend secret in `gym-frontend/.env` and not declare it in compose.
 
@@ -309,7 +309,7 @@ class BranchRepository extends FetchFactory {
 
 Paths bare (`branch`, `auth/login`) — `/api` prefix and backend `cms/v1` base added by fetch client and Nitro proxy. Register new repository in `plugins/api.ts` (`IapiInstance` + returned object), then use as `const { $api } = useNuxtApp()` then `$api.branch.getAll(...)`. Repository methods typed in and out; no `any`.
 
-Mock handlers live in `gym-frontend/server/api/` and `_mockApis/` and shadow real endpoints — template leftovers. Don't add new mocks for features that have real backend endpoint; wire repository to API instead.
+No mock layer: the template's `server/api/` handlers and `_mockApis/` were deleted. Don't add mocks for features that have real backend endpoint; wire repository to API instead.
 
 ### Types
 
@@ -318,7 +318,7 @@ Mock handlers live in `gym-frontend/server/api/` and `_mockApis/` and shadow rea
 
 ### Components, state, composables
 
-- Components live under `components/<domain>/`, plus `components/shared/` for reusable shell pieces (`UiParentCard`, `SharedDeleteAlert`, `BaseBreadcrumb`). Nuxt auto-import name them from path (`shared/DeleteAlert.vue` → `<SharedDeleteAlert>`); use auto-imported name rather than manual relative import when add new usages.
+- Components live under `components/<domain>/`, plus `components/shared/` for reusable shell pieces (`SharedUiListPage`, `SharedUiDialog`, `SharedFilterPanel`). Nuxt auto-import name them from path (`shared/DeleteAlert.vue` → `<SharedDeleteAlert>`); use auto-imported name rather than manual relative import when add new usages.
 - All pages/components `<script setup lang="ts">`. Vuetify components used direct; match casing already in file you edit.
 - Stores are Pinia **setup stores** in `stores/` (`defineStore("auth", () => { … })`) with `pinia-plugin-persistedstate` where persistence needed. Session/token state belong in `stores/auth.ts` — read via `useAuthStore()`, never from `Cookie` direct in page.
 - Shared logic go in `composables/` and reused, not re-implemented: `useAlert()` (`showError`/`showSuccess`), `usePagination()` (`calculateItemNumbering`), `usePermission()`, `useUploadFile()`, date/status helpers.
