@@ -117,7 +117,7 @@ make destroy                     # tear down + delete db/redis volumes
   else set in compose silently never reaches the served app. Edit `gym-backend/.env` for
   local tweaks; delete it and restart to reset. If things look stale after a config
   change: `make artisan cmd="config:clear"`.
-- `make seed` skips `AmpabaSeeder` and `ampaba:sync:branch`: they call the Ampaba partner
+- `make seed` skips `AmpabaSeeder` and `ampaba:sync --only=branch`: they call the Ampaba partner
   API and fail without credentials, which is why plain `php artisan db:seed` doesn't work
   offline. Fill in the `AMPABA_*` vars in `.env` if you need that data.
 - `make fresh` drops the `ampaba` Postgres schema before `migrate:fresh`. Laravel only

@@ -140,7 +140,7 @@ artisan: ## Run artisan, e.g. make artisan cmd="route:list"
 migrate: ## Run migrations
 	$(DC) exec backend php artisan migrate
 
-# DatabaseSeeder starts with AmpabaSeeder + `ampaba:sync:branch`, which call the partner
+# DatabaseSeeder starts with AmpabaSeeder + `ampaba:sync --only=branch`, which call the partner
 # API and fail without credentials. These are the seeders that run offline.
 LOCAL_SEEDERS := RoleSeeder PermissionSeeder SettingSeeder BranchSeeder QuestionnaireSeeder \
 	UserSeeder BannerSeeder SkillSeeder PersonalTrainerSeeder ClassCategorySeeder \
