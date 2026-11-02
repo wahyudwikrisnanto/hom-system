@@ -12,7 +12,8 @@ hom-system/
 ├── Makefile         # entry point for every dev command
 ├── gym-backend/     # submodule → git@github.com:HMBcorp/hom-backend.git
 ├── gym-frontend/    # submodule → git@github.com:HMBcorp/hom-frontend.git
-└── automation/      # submodule → git@github.com:wahyudwikrisnanto/hom-cypress.git
+├── automation/      # submodule → git@github.com:wahyudwikrisnanto/hom-cypress.git
+└── gate-bridge/     # submodule → git@github.com:wahyudwikrisnanto/gate_bridge.git
 ```
 
 Submodules are separate repos, so **commits inside `gym-backend/` belong to backend repo**, not this one. Commit here only record submodule *pointer* plus compose/Makefile/docs changes. Change both: commit in submodule first, then commit updated pointer here.
@@ -494,6 +495,39 @@ Currently **no working automated gate** on frontend — don't claim one ran:
 - `npx nuxi typecheck` fail too — `vue-tsc`/`typescript` not in `devDependencies`.
 
 So: verify changes in running app at http://localhost:3000 and watch `make logs-frontend` for Vite/Nitro errors. Keep types tight by hand since nothing check them. If you fix lint/typecheck setup, that a change to `gym-frontend`, and this section should be updated with working commands.
+
+## Gate bridge orientation (`gate-bridge/`)
+
+Single static Go binary (Go 1.22, stdlib + `golang.org/x/term`/`x/sys`; `main.go` server, `auth.go` token, `credstore*.go` encrypted file, `login.go`) run on front-desk PC on the gym LAN, one per branch. Go port of old `gate_server.py`, which it replace. Sit between CARDTECK FOKUSGATE-API1 turnstile device, HOM backend and CMS browser. **Not in Docker** — must reach device LAN IPs; build/run on host:
+
+```bash
+make artisan cmd="gate:credentials"   # once: create gate account, password printed once (--rotate = new one, revoke all)
+make gate-bridge-login b=2  # once: sign in, writes gate-bridge/local-branch-2.cred
+make gate-bridge b=2        # go run -b 2 -env local (http://localhost:8881), port 8081
+make gate-bridge-build      # go vet + build gate-bridge/gate_bridge
+make gate-bridge-test       # go vet + go test -race (fake HOM backend, no device)
+./gate_bridge -b 2 [-env local|development|production] [-base-url URL] [-login] [-port 8081]   # production default
+```
+
+`-b`/`-branch` required: HOM `branch_id` sent with every verify. `-base-url`/`-u` override `-env` base URL (`http(s)://host[:port][/prefix]`, verify path appended). CI (`.github/workflows/build.yml`) build linux amd64/arm64 + windows amd64; tag `v*` publish GitHub release.
+
+Three endpoints on `:8081`:
+
+- `POST /Gate` — device scan (device config: Server Port 8081, URL `/Gate`, ClientType 120), body `{"Tag":"<membership unique_code>","Gate":1,"Reader":1}`. Bridge call `POST {base}/hook/gate/v1/memberships/verify` `{"code","branch_id"}` with `Bearer` token (`gym-backend/routes/hook/gate.php`, `App\Http\Hook\Gate\GateController`; verify itself record the check-in via `VisitService::gateCheckIn()`). Open only when `data.valid === true`; any error/non-2xx = stay closed. Open = background `POST http://<deviceIP>/api/command` `{"Action":"gate","Gate":n,"Reader":n}` with Basic auth; device hold reply for Punch Delay, so timeout after request written count as success.
+- `POST /open` — CMS **Open** button relay (`gym-frontend/composables/gate-control/`, helper URL `NUXT_PUBLIC_GATE_HELPER_URL`, default `http://localhost:8081`). Device answer no CORS preflight, so browser post `{ip,gate,reader,username,password}` here; bridge add Basic auth and forward. Only private non-loopback IPs, only `/api/command`, only credentials CMS sent.
+- `POST /status` — CMS health dots: `{"ips":[...]}` → TCP connect to port 80 per IP (no command), max 50, 1.5s each, parallel.
+
+CORS on `/open` + `/status` only: `http://localhost:3000`, `http://127.0.0.1:3000`, `https://*.homgym.my.id`, plus `Access-Control-Allow-Private-Network`. Chrome `targetAddressSpace` in CMS fetch must match helper host (`loopback` for localhost, `local` for LAN IP) or fetch fail "Failed to fetch".
+
+Gotchas:
+
+- Scan-path device IP + credentials are **constants** at top of `main.go` (`deviceIP`, `deviceUser`, `devicePass`) — one device per bridge today; CMS-driven `/open` use per-gate IP/credentials from CMS instead.
+- Verify call send browser `User-Agent`: Cloudflare block Go default (error 1010). Don't drop it.
+- **Gate hook require token.** Bridge sign in as shared `Partner` `gate-bridge` (`partners.data.role = gate`, `Partner::scopeGate()`) at `POST hook/gate/v1/auth/token` `{username,password,branch_id}` (`throttle:5,1`, `GateAuthService`). Token: Sanctum ability `gate`, name `gate:branch-{id}` (one per branch, re-login replace only that branch's), 24h expiry. `memberships/verify` behind `auth:hook` + `abilities:gate` — Ampaba's partner token get 403. No CMS screen: account only via `gate:credentials`.
+- Bridge keep username/password + token in `.cred` file next to binary (`-credentials PATH` override), DPAPI machine scope on Windows, AES-GCM from `/etc/machine-id` on Linux. Renew 1h before expiry, on 401 (single login shared by concurrent scans, retry once, 30s backoff after fail), and at startup when expired; backend down at startup never stop bridge. Operator steps in `gate-bridge/README.md` → Credentials.
+- Rotation (`gate:credentials --rotate`) sign every branch out: each PC need `-login` again. Bridge older than token auth get 401 on every scan.
+- Bridge is deployed on front-desk PCs, not with backend — verify request/response shape is contract like app API. Add response keys, never rename `data.valid`/`data.reason`/`data.membership`.
+- **Never trigger a real open while testing** (scan or `/open` against `192.168.1.95`): it is a real gate. Use `/status` or a fake device.
 
 ## Automation orientation (`automation/`)
 

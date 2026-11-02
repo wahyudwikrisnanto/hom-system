@@ -10,3 +10,6 @@
 [submodule "automation"]
 	path = automation
 	url = git@github.com:wahyudwikrisnanto/hom-cypress.git
+[submodule "gate-bridge"]
+	path = gate-bridge
+	url = git@github.com:wahyudwikrisnanto/gate_bridge.git

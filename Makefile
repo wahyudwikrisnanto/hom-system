@@ -111,6 +111,23 @@ agent: ## Run the host agent: triage, work sessions, the test case and task assi
 automation-check: ## Format, lint and build the automation repo in its container
 	$(DC) exec automation npm run check
 
+# On the host, not in Docker: the bridge must sit on the gate devices' LAN (Go 1.22+).
+gate-bridge-build: ## Build the gate bridge binary into gate-bridge/gate_bridge
+	cd gate-bridge && go vet ./... && go build -trimpath -ldflags "-s -w" -o gate_bridge .
+
+# `go run` builds into a temp dir, so the credentials file is pinned inside gate-bridge/
+# (gitignored *.cred) instead of next to the binary.
+GATE_BRIDGE_ARGS = -b $(b) -env local $(if $(u),-u $(u)) -credentials local-branch-$(b).cred
+
+gate-bridge-login: ## Sign the local gate bridge in once (account from `make artisan cmd="gate:credentials"`), e.g. make gate-bridge-login b=2
+	cd gate-bridge && go run . $(GATE_BRIDGE_ARGS) -login
+
+gate-bridge: ## Run the gate bridge on :8081 against the local backend (u= overrides base URL), e.g. make gate-bridge b=2
+	cd gate-bridge && go run . $(GATE_BRIDGE_ARGS)
+
+gate-bridge-test: ## Vet and test the gate bridge
+	cd gate-bridge && go vet ./... && go test -race ./...
+
 psql: ## Open psql on the local database
 	$(DC) exec pgsql psql -U hom -d hom
 
@@ -150,4 +167,4 @@ composer: ## Run composer, e.g. make composer cmd="require foo/bar"
 test: ## Run the backend test suite
 	$(DC) exec backend php artisan test
 
-.PHONY: help init build up dev-be dev-fe up-workers down destroy restart ps logs logs-backend logs-queue logs-frontend logs-minio logs-automation logs-runner sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel cypress-cases automation-migrate sql-automation agent automation-check psql redis-cli artisan migrate seed fresh composer test
+.PHONY: help init build up dev-be dev-fe up-workers down destroy restart ps logs logs-backend logs-queue logs-frontend logs-minio logs-automation logs-runner sh sh-frontend sh-automation yarn npm cypress cypress-frontend cypress-backend cypress-panel cypress-cases automation-migrate sql-automation agent automation-check gate-bridge-build gate-bridge-login gate-bridge gate-bridge-test psql redis-cli artisan migrate seed fresh composer test
