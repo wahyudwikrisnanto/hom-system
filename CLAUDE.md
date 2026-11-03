@@ -509,11 +509,11 @@ make gate-bridge-test       # go vet + go test -race (fake HOM backend, no devic
 ./gate_bridge -b 2 [-env local|development|production] [-base-url URL] [-login] [-port 8081]   # production default
 ```
 
-`-b`/`-branch` required: HOM `branch_id` sent with every verify. `-base-url`/`-u` override `-env` base URL (`http(s)://host[:port][/prefix]`, verify path appended). CI (`.github/workflows/build.yml`) build linux amd64/arm64 + windows amd64; tag `v*` publish GitHub release.
+`-b`/`-branch` required: HOM `branch_id` sent with every verify. `-base-url`/`-u` override `-env` base URL (`http(s)://host[:port][/prefix]`, verify path appended). CI (`.github/workflows/build.yml`) run only on tag `v*` push (no branch/PR builds): vet + test, build linux amd64/arm64 + windows amd64, publish GitHub release.
 
 Three endpoints on `:8081`:
 
-- `POST /Gate` — device scan (device config: Server Port 8081, URL `/Gate`, ClientType 120), body `{"Tag":"<membership unique_code>","Gate":1,"Reader":1}`. Bridge call `POST {base}/hook/gate/v1/memberships/verify` `{"code","branch_id"}` with `Bearer` token (`gym-backend/routes/hook/gate.php`, `App\Http\Hook\Gate\GateController`; verify itself record the check-in via `VisitService::gateCheckIn()`). Open only when `data.valid === true`; any error/non-2xx = stay closed. Open = background `POST http://<deviceIP>/api/command` `{"Action":"gate","Gate":n,"Reader":n}` with Basic auth; device hold reply for Punch Delay, so timeout after request written count as success.
+- `POST /Gate` — device scan (device config: Server Port 8081, URL `/Gate`, ClientType 120), body `{"Tag":"<membership unique_code>","Gate":1,"Reader":1}`. Bridge call `POST {base}/hook/gate/v1/memberships/verify` `{"code","branch_id"}` with `Bearer` token (`gym-backend/routes/hook/gate.php`, `App\Http\Hook\Gate\GateController`; verify itself record the check-in via `VisitService::gateCheckIn()`). Open only when `data.valid === true`; any error/non-2xx = stay closed. Open = background `POST http://<gate ip>/api/command` `{"Action":"gate","Gate":n,"Reader":n}` with Basic auth; device hold reply for Punch Delay, so timeout after request written count as success.
 - `POST /open` — CMS **Open** button relay (`gym-frontend/composables/gate-control/`, helper URL `NUXT_PUBLIC_GATE_HELPER_URL`, default `http://localhost:8081`). Device answer no CORS preflight, so browser post `{ip,gate,reader,username,password}` here; bridge add Basic auth and forward. Only private non-loopback IPs, only `/api/command`, only credentials CMS sent.
 - `POST /status` — CMS health dots: `{"ips":[...]}` → TCP connect to port 80 per IP (no command), max 50, 1.5s each, parallel.
 
@@ -521,7 +521,7 @@ CORS on `/open` + `/status` only: `http://localhost:3000`, `http://127.0.0.1:300
 
 Gotchas:
 
-- Scan-path device IP + credentials are **constants** at top of `main.go` (`deviceIP`, `deviceUser`, `devicePass`) — one device per bridge today; CMS-driven `/open` use per-gate IP/credentials from CMS instead.
+- No device address or credential in code. Scan path open the gate registered in CMS for scan's Gate/Reader: `GET hook/gate/v1/gates?branch_id=` (same token, own branch only, 403 otherwise) cached in memory, fetched at startup, on unknown Gate/Reader (max every 30s) and on `POST /gates/refresh`. Scan with no registered gate denied before verify, so no check-in recorded. `/open` use only IP/credentials CMS sent, no fallback to cache.
 - Verify call send browser `User-Agent`: Cloudflare block Go default (error 1010). Don't drop it.
 - **Gate hook require token.** Bridge sign in as shared `Partner` `gate-bridge` (`partners.data.role = gate`, `Partner::scopeGate()`) at `POST hook/gate/v1/auth/token` `{username,password,branch_id}` (`throttle:5,1`, `GateAuthService`). Token: Sanctum ability `gate`, name `gate:branch-{id}` (one per branch, re-login replace only that branch's), 24h expiry. `memberships/verify` behind `auth:hook` + `abilities:gate` — Ampaba's partner token get 403. No CMS screen: account only via `gate:credentials`.
 - Bridge keep username/password + token in `.cred` file next to binary (`-credentials PATH` override), DPAPI machine scope on Windows, AES-GCM from `/etc/machine-id` on Linux. Renew 1h before expiry, on 401 (single login shared by concurrent scans, retry once, 30s backoff after fail), and at startup when expired; backend down at startup never stop bridge. Operator steps in `gate-bridge/README.md` → Credentials.
