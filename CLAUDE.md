@@ -10,8 +10,8 @@ Guide for Claude Code in this repo.
 hom-system/
 ├── compose.yml      # local-only docker env (this repo's only "code")
 ├── Makefile         # entry point for every dev command
-├── gym-backend/     # submodule → git@github.com:HMBcorp/hom-backend.git
-├── gym-frontend/    # submodule → git@github.com:HMBcorp/hom-frontend.git
+├── gym-backend/     # submodule → git@github.com:HMBDev-World/hom-backend.git
+├── gym-frontend/    # submodule → git@github.com:HMBDev-World/hom-frontend.git
 ├── automation/      # submodule → git@github.com:wahyudwikrisnanto/hom-cypress.git
 └── gate-bridge/     # submodule → git@github.com:wahyudwikrisnanto/gate_bridge.git
 ```
