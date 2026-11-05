@@ -29,7 +29,7 @@ services:
         TZ: Asia/Jakarta
     image: hom-backend:local
     container_name: hom-backend-app
-    restart: unless-stopped
+    restart: "no"
     working_dir: /var/www/app
     # `artisan serve` only forwards a whitelist of env vars to the PHP dev server, so
     # the app config comes from .env (seeded from docker/backend/env.local), not from
@@ -103,7 +103,7 @@ services:
   pgsql:
     image: postgres:17
     container_name: hom-pgsql
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "5433:5432"
     environment:
@@ -123,7 +123,7 @@ services:
   redis:
     image: redis:alpine
     container_name: hom-redis
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "6378:6379"
     volumes:
@@ -139,7 +139,7 @@ services:
   mailpit:
     image: axllent/mailpit
     container_name: hom-mailpit
-    restart: unless-stopped
+    restart: "no"
     ports:
       - "8025:8025" # web UI
       - "1025:1025" # smtp
@@ -149,7 +149,7 @@ services:
   minio:
     image: minio/minio
     container_name: hom-minio
-    restart: unless-stopped
+    restart: "no"
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000" # S3 API
@@ -189,7 +189,7 @@ services:
   frontend:
     image: node:22-slim
     container_name: hom-frontend
-    restart: unless-stopped
+    restart: "no"
     working_dir: /app
     user: "${UID:-1000}:${GID:-1000}"
     command: >
@@ -228,7 +228,7 @@ services:
   automation:
     image: node:22-slim
     container_name: hom-automation
-    restart: unless-stopped
+    restart: "no"
     working_dir: /app
     user: "${UID:-1000}:${GID:-1000}"
     # Two processes: the panel's API on 5174 and Vite on 5173, which proxies
@@ -296,7 +296,7 @@ services:
   cypress-runner:
     image: cypress/included:15.21.1
     container_name: hom-cypress-runner
-    restart: unless-stopped
+    restart: "no"
     working_dir: /app
     user: "${UID:-1000}:${GID:-1000}"
     entrypoint: ["node", "server/runner.js"]
