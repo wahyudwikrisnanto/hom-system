@@ -265,7 +265,7 @@ docker compose exec backend ./vendor/bin/phpstan analyse app/Http/Cms/V1/Branch
 # whole-diff shortcuts inside `make sh`: ./vendor/bin/pint --dirty && composer analyze:changed
 ```
 
-`EXPLAIN ANALYZE` any new or changed query touching a growing table before finish, and state plan in handover — seq scan on growing table is defect, not nit.
+**Every** new or changed query run through `EXPLAIN (ANALYZE, BUFFERS)` on local Postgres (`hom_apps_prod`, real data) before finish — capture the SQL (Telescope, `DB::listen`, `toRawSql()`), not guess it — and state plan (index used, rows, time) in handover. Seq scan on growing table is defect, not nit.
 
 Fix PHPStan errors at cause (missing relation generic, untyped nullable param) — no new `@phpstan-ignore*`, `ignoreErrors`, or baseline entries. Errors your change introduced block commit; pre-existing ones on untouched lines don't — mention them instead. If one truly can't be fixed, ask before suppressing it.
 
@@ -458,6 +458,7 @@ Input the admin pick is branch wall clock: read with `toLocalInput(instant, sour
 - List screens use `<v-data-table-server>` with **server-side** pagination: `headers` as `computed`, `@update:options` call repository, `pagination` state from API meta, search debounced with `useDebounceFn`. Don't fetch everything and filter client-side.
 - Every action permission-gated with `userHasPermission("admin.edit")` / `userHasAnyPermissions(...)` from auth store, and cards take `permission` prop (`<UiParentCard permission="admin.view">`). Route-level guarding handled by global middleware in `middleware/` (`auth.global.ts`, `permissions.global.ts`) — add page-level `definePageMeta({ middleware })` only when page need something extra.
 - Permission strings follow `<domain>.<action>` (`admin.view`, `admin.add`, `admin.edit`, `admin.delete`) and must match backend permission names.
+- **Tab content fetch only when its tab first open**, never on page mount. Detail pages hold an `opened` set: `<div v-if="opened.has('x')" v-show="tab === 'x'">` mount the tab (and its request) on first visit, keep it mounted after. Tab hidden by permission never mount. Verify in network log that nothing leave until the tab clicked.
 
 ### Admin guide (`/guide`)
 
